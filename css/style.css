@@ -1,0 +1,48 @@
+:root {
+    --secondary-bg-color: #0C1017;
+    --primary-bg-color: #212121;
+    --primary-color: #4C52B2;
+    --primary-button-color: #B0B7BE;
+}
+
+input[type="range"] {
+    width: 100%;
+}
+
+#add-song {
+
+    background-color: var(--primary-color);
+    box-shadow: 1px 1px 3px 0px #0e0e0e85;
+}
+
+#add-song:focus {
+    outline: none;
+}
+
+#add-song:active {
+    background-color: rgb(57, 63, 146);
+    box-shadow: 2px 2px #0e0e0e;
+    transform: translate(0px, 1px)
+}
+
+.song-card:hover {
+    background-color: #0e0e0e;
+    box-shadow: none;
+}
+
+.song-card {
+    display: flex;
+    min-height: 5vw;
+    max-height: 5vw;
+    overflow: hidden;
+    cursor: pointer;
+    margin: 5px 6px;
+    font-family: "Gill Sans, Seravek, Trebuchet MS, sans-serif";
+    box-shadow: 2px 2px 0px 1px #0e0e0e;
+}
+
+#play-button:hover, #song-skip-backward:hover, #song-skip-forward:hover {
+    color: #eeeeee;
+ 
+    cursor: pointer;
+}

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="icon" href="https://i.pinimg.com/originals/75/a8/7e/75a87e9fcc8f899d53a82773c3f08e3d.jpg" />
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+        <link rel="stylesheet" href="css/style.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.3/jsmediatags.js"></script>
+        <title>Music Party 🎉</title>
+    </head>
+    <body style="height: 100vh; width: 100vw; margin: 0; color: #fff;">
+        <div id="App" style="display: flex; flex-direction: row; height: 100%; width: 100%;">
+            <div style="display: flex; flex-direction: column; flex: 2; background-color: var(--secondary-bg-color);padding: 5px;" class="listeners">
+                Listeners
+                <div>
+                    Listener #1
+                </div>
+                <div>
+                    Listener #2
+                </div>
+            </div>
+            <div style="flex: 5; display: flex; flex-direction: column; align-items: center; justify-content: center;background-color: var(--primary-bg-color);padding: 5px;" class="player">
+                <img id="song-img" style="width: 300px; height: 300px; border-radius: 10px;" src="https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg"/>
+                <div style="padding: 15px; display: flex; flex-direction: column; align-items: center; font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+                    <div style="font-size: 2em;" id="song-title">
+                        Land of the Free
+                    </div>
+                    <div style="font-size: 1.3em; color: #dedede;" id="song-artist">
+                        Joey Bada$$
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-evenly; color: var(--primary-button-color);">
+
+                    <div id="song-skip-backward" style="margin-right: 7px;">
+                        <svg width="3em" height="3em" viewBox="0 0 16 16" class="bi bi-skip-start-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M4.5 3.5A.5.5 0 0 0 4 4v8a.5.5 0 0 0 1 0V4a.5.5 0 0 0-.5-.5z"/>
+                            <path d="M4.903 8.697l6.364 3.692c.54.313 1.232-.066 1.232-.697V4.308c0-.63-.692-1.01-1.232-.696L4.903 7.304a.802.802 0 0 0 0 1.393z"/>
+                        </svg>
+                    </div>
+
+                    <div id="play-button" playing="true" style="cursor: pointer;">
+                        <svg width="10em" height="10em" viewBox="0 0 16 16" class="bi bi-play-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
+                        </svg>
+                    </div>
+
+                    <div id="song-skip-forward">
+                        <svg width="3em" height="3em" viewBox="0 0 16 16" class="bi bi-skip-end-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M12 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/>
+                            <path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
+                        </svg>
+                    </div>
+
+                </div>
+
+                <div style="display: flex; justify-content: center; width: 80%; padding: 5px">
+                    <audio autoplay id="audio-player"></audio>
+                    <time class="time_elapsed" datetime="PT2M30S">0:00</time>
+                    <div style="flex: 1; padding: 0 10px;">
+                        <input id="slider" type="range" min="0" max="100" value="0" step="1">
+                    </div>
+                    <time class="time_remaining" datetime="PT2M30S">-2:30</time>
+                </div>
+            </div>
+
+            <div style="flex: 3; display: flex; flex-direction: column; align-items: center; overflow-y: scroll; background-color: var(--secondary-bg-color);padding: 5px;">
+
+                <button id="add-song" style="font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif; font-size: 20px;width: 90%; color: #fff;border:none;border-radius: 5px;margin-top: 10px; padding: 9px;">
+                    Add a Song to the queue
+                </button>
+
+                <hr style="width: 100%; border-top: 1px solid #2f2f2f">
+
+                <div id="playlist" style="display: flex; flex-direction: column; overflow-y: scroll;">
+                </div>
+            </div>
+        </div>
+
+        <script src="js/index.js"></script>
+    </body>
+</html>
