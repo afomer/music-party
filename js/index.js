@@ -16,16 +16,16 @@ function songElementFn(title, artist, duration) {
         <div style="flex: 9; display: flex; flex-direction: column;">
 
             <div style="display: flex; justify-content: space-between">
-                <div style="font-size: 1vw; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" id="song-title">
+                <div style="font-size: 1vw; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
                     ${title}
                 </div>
 
-                <div style="font-size: 0.8em;font-weight: 100;" id="song-artist">
+                <div style="font-size: 0.8em;font-weight: 100;">
                     ${duration}
                 </div>
             </div>
 
-            <div style="font-size: 0.8em;font-weight: 100;" id="song-artist">
+            <div style="font-size: 0.8em;font-weight: 100;">
                 ${artist}
             </div>
 
@@ -111,18 +111,26 @@ function activateAddSongButton() {
                                     const timeLeftMinutes = `${(timeLeft / 60).toFixed(0)}`
                                     const timeLeftSeconds = `${(timeLeft % 60).toFixed(0)}`
 
-                                    document.getElementById('slider').value = $audio_player.currentTime
                                     document.getElementsByClassName('time_elapsed')[0].datetime  = `PT${currentTimeMinutes}M${currentTimeSeconds}S`
                                     document.getElementsByClassName('time_elapsed')[0].innerHTML =`${currentTimeMinutes}:${currentTimeSeconds.padStart(2, "0")}s`
                                     document.getElementsByClassName('time_remaining')[0].datetime = `PT$${timeLeftMinutes}M${timeLeftSeconds}S`
                                     document.getElementsByClassName('time_remaining')[0].innerHTML = `-${timeLeftMinutes}:${timeLeftSeconds.padStart(2, "0")}s`
+
+                                    // Trigger 'input' event so listener, can handle it
+                                    $slider.value = $audio_player.currentTime
+                                    const event = new Event('input', {
+                                                        bubbles: true,
+                                                        cancelable: true
+                                                    })
+
+                                    $slider.dispatchEvent(event)
                                 }
 
                                 $slider.value = 0
                                 $slider.step = 1
                                 $slider.min = 0
                                 $slider.max = Math.floor(tmpAudio.duration)
-                                $slider.onchange = () => $audio_player.currentTime = $slider.value
+                                $slider.addEventListener('change', () => $audio_player.currentTime = $slider.value)
 
                             }
                         })
@@ -136,31 +144,41 @@ function activateAddSongButton() {
 
 function activatePlayButton() {
     document.getElementById('play-button').onclick = (e) => {
-        let result = ''
         const isPlaying = document.getElementById('play-button').getAttribute('playing')
-        console.log('WTF', isPlaying)
         if (isPlaying == "true") {
-            result = svgPauseElement
             document.getElementById('play-button').setAttribute('playing', false)
+            document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-pause fa-lg')
             document.getElementsByTagName('audio')[0].pause()
         } else {
-            result = svgPlayElement
             document.getElementById('play-button').setAttribute('playing', true)
+            document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-play fa-lg')
             document.getElementsByTagName('audio')[0].play()
         }
-        document.getElementById('play-button').innerHTML = result
     }
 
     document.getElementById('audio-player').onpause = (e) => {
-        let result = svgPlayElement
         document.getElementById('play-button').setAttribute('playing', false)
-        document.getElementById('play-button').innerHTML = result
+        document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-play fa-lg')
     }
 
     document.getElementById('audio-player').onplay = (e) => {
-        let result = svgPauseElement
         document.getElementById('play-button').setAttribute('playing', true)
-        document.getElementById('play-button').innerHTML = result
+        document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-pause fa-lg')
+    }
+}
+
+const activateVolumeSlider = () => {
+    // Set up initial value
+    $volume_range = document.getElementById('volume-range')
+    console.log(document.getElementById('audio-player').volume)
+    $volume_range.value = document.getElementById('audio-player').volume
+    $volume_range.style['background-size'] = `${(($volume_range.value - $volume_range.min) * 100 / ($volume_range.max - $volume_range.min))}% 100%`
+
+    // When slider change => change audio player volume
+    document.getElementById('volume-range').oninput = (e) => {
+        const $audio_player = document.getElementById('audio-player')
+        const volumeRangeValue = e.target.value
+        $audio_player.volume = volumeRangeValue
     }
 }
 
@@ -173,5 +191,20 @@ function activatePlayButton() {
 // Make the Add Song, and the Play buttons functional
 activateAddSongButton()
 activatePlayButton()
+activateVolumeSlider()
 
 
+
+
+// Take care of progressing the bar
+const updateSlider =  (e) => {
+    const rangeMin = e.target.min
+    const rangeMax = e.target.max
+    const value = e.target.value
+    e.target.style['background-size'] = `${((value - rangeMin) * 100 / (rangeMax - rangeMin))}% 100%`
+}
+
+for (const elem of document.querySelectorAll('input[type="range"]')) {
+    elem.addEventListener('input', updateSlider)
+    elem.addEventListener('change', updateSlider)
+}
