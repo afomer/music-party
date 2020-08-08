@@ -1,32 +1,27 @@
-const svgPauseElement = `<svg width="10em" height="10em" viewBox="0 0 16 16" class="bi bi-pause-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>
-    </svg>`
-
-const svgPlayElement = `<svg width="10em" height="10em" viewBox="0 0 16 16" class="bi bi-play-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
-    </svg>`
 
 // Add songs in a list format
 function songElementFn(title, artist, duration) {
-    return (`<div class="song-card">
-        <div style="flex: 1; margin-right: 6px">
+    return (`
+    <div class="song-card">
+        <div style="width: 10%; flex: 1;">
             <img style="border-radius: 3px; height: 100%; width: 100%;"/>
         </div>
 
-        <div style="flex: 9; display: flex; flex-direction: column;">
+        <div style="width: 90%; margin-left: 10px; display: flex; justify-content: space-between; align-items: center;">
 
-            <div style="display: flex; justify-content: space-between">
-                <div style="font-size: 1vw; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            <div style="display: flex; flex: 9; flex-direction: column; justify-content: space-between; align-items: flex-start">
+                <div style="font-size: 1.2em; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                     ${title}
                 </div>
 
-                <div style="font-size: 0.8em;font-weight: 100;">
-                    ${duration}
+                <div style="font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+                    ${artist}
                 </div>
+
             </div>
 
-            <div style="font-size: 0.8em;font-weight: 100;">
-                ${artist}
+            <div style="flex: 1; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+                ${duration}
             </div>
 
         </div>
@@ -81,9 +76,10 @@ function activateAddSongButton() {
                         })
 
                     // save it to duration
-                    const duration = `${(tmpAudio.duration / 60).toFixed(0)}m ${(tmpAudio.duration % 60).toFixed(0)}s`
+                    const duration = `${(tmpAudio.duration / 60).toFixed(0)}:${(tmpAudio.duration % 60).toFixed(0).padStart(2, "0")}`
                     const title  = tags['title'] || file['name']
-                    const artist = tags['artist'] || ''
+                    console.log(tags['album'])
+                    const artist = tags['artist'] && (tags['artist'] + ((tags['album'] != 'None' && ` • ${tags['album']}`) || '')) || ''
                     const img    = tags['picture']?.['data'] ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']?.['data']) : 'https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg'
 
                     const div = document.createElement('div')
@@ -142,28 +138,46 @@ function activateAddSongButton() {
     }
 }
 
+const pauseStyle = 'fas fa-pause fa-3x'
+const playStyle  = 'fas fa-play fa-3x'
+
+const changePlayButtonUI = ({ isPlaying, buttonStyle }) => {
+    document.getElementById('play-button').setAttribute('playing', isPlaying)
+    document.getElementById('play-button').firstElementChild.setAttribute('class', buttonStyle)
+}
+
+const playAudio = () => {
+    changePlayButtonUI({ isPlaying: true, buttonStyle: playStyle })
+    return document.getElementsByTagName('audio')[0].play()
+}
+
+const pauseAudio = () => {
+    changePlayButtonUI({ isPlaying: false, buttonStyle: pauseStyle })
+    return document.getElementsByTagName('audio')[0].pause()
+}
+
 function activatePlayButton() {
+
+    let playPromise = undefined
+
     document.getElementById('play-button').onclick = (e) => {
-        const isPlaying = document.getElementById('play-button').getAttribute('playing')
-        if (isPlaying == "true") {
-            document.getElementById('play-button').setAttribute('playing', false)
-            document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-pause fa-lg')
-            document.getElementsByTagName('audio')[0].pause()
+        const isPlaying  = document.getElementById('play-button').getAttribute('playing') || false
+        const togglePlayButton = isPlaying == "true" ? pauseAudio : playAudio
+
+        if (playPromise !== undefined) {
+            playPromise = playPromise.then(togglePlayButton)
         } else {
-            document.getElementById('play-button').setAttribute('playing', true)
-            document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-play fa-lg')
-            document.getElementsByTagName('audio')[0].play()
+            playPromise = togglePlayButton()
         }
+
     }
 
     document.getElementById('audio-player').onpause = (e) => {
-        document.getElementById('play-button').setAttribute('playing', false)
-        document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-play fa-lg')
+        changePlayButtonUI({ isPlaying: false, buttonStyle: playStyle })
     }
 
     document.getElementById('audio-player').onplay = (e) => {
-        document.getElementById('play-button').setAttribute('playing', true)
-        document.getElementById('play-button').firstElementChild.setAttribute('class', 'fas fa-pause fa-lg')
+        changePlayButtonUI({ isPlaying: true, buttonStyle: pauseStyle })
     }
 }
 

@@ -5,6 +5,10 @@
     --primary-button-color: #B0B7BE;
 }
 
+p {
+    margin: 0;
+}
+
 input[type="range"] {
     flex: 1;
     display: flex;
@@ -50,10 +54,11 @@ input[type="range"]::-webkit-slider-thumb {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: space-around;
+    justify-content: space-between;
     color: #000;
     background: var(--primary-bg-color);
-    padding: 10px 0 10px 0;
+    padding: 30px 16px;
+    border-top: 1px solid var(--primary-color);
 }
 
 #add-song {
@@ -89,6 +94,12 @@ input[type="range"]::-webkit-slider-thumb {
 
 #play-button, #song-skip-backward, #song-skip-forward {
     color: #eee;
+    padding: 0 2em;
+}
+
+#play-button:focus, #song-skip-backward:focus, #song-skip-forward:focus {
+    outline: none;
+    box-shadow: none;
 }
 
 #play-button:hover, #song-skip-backward:hover, #song-skip-forward:hover {
