@@ -3,11 +3,11 @@
 function songElementFn(title, artist, duration) {
     return (`
     <div class="song-card">
-        <div style="width: 10%; flex: 1;">
+        <div style="width: 8%; height: 100%;">
             <img style="border-radius: 3px; height: 100%; width: 100%;"/>
         </div>
 
-        <div style="width: 90%; margin-left: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="width: 93%; margin-left: 10px; display: flex; justify-content: space-between; align-items: center;">
 
             <div style="display: flex; flex: 9; flex-direction: column; justify-content: space-between; align-items: flex-start">
                 <div style="font-size: 1.2em; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
@@ -20,7 +20,7 @@ function songElementFn(title, artist, duration) {
 
             </div>
 
-            <div style="flex: 1; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+            <div style="flex: 1; text-align: right; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                 ${duration}
             </div>
 

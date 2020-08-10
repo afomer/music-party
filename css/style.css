@@ -50,6 +50,29 @@ input[type="range"]::-webkit-slider-thumb {
 
 }
 
+#room-input, #room-input:focus {
+    outline: none;
+    height: 100%;
+    width: 100%;
+    padding: 10px 0 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    border: none;
+    background: #fff;
+}
+
+#room-create, #room-create:focus {
+    outline: none;
+    width: 100%;
+    padding: 10px 0 10px 20px;
+    border-radius: 25px;
+    border: none;
+    border: none;
+    font-weight: 600;
+    color: #fff;
+    background-color: var(--primary-color);
+}
+
 .player {
     display: flex;
     flex-direction: row;
@@ -83,11 +106,12 @@ input[type="range"]::-webkit-slider-thumb {
 
 .song-card {
     display: flex;
+    justify-content: space-between;
     min-height: 5vw;
     max-height: 5vw;
     overflow: hidden;
     cursor: pointer;
-    margin: 5px 6px;
+    margin: 5px 25px;
     font-family: "Gill Sans, Seravek, Trebuchet MS, sans-serif";
     box-shadow: 2px 2px 0px 1px #0e0e0e;
 }

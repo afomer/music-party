@@ -11,19 +11,50 @@
     </head>
     <body style="display: flex; flex-direction: column; height: 100vh; width: 100vw; margin: 0; color: #fff;">
         <div style="display: flex; flex-direction: row; height: 100%; width: 100%;  overflow: hidden;">
-            <div style="font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;display: flex; flex-direction: column; flex: 2; background-color: var(--secondary-bg-color);padding: 5px;" class="listeners">
-                Listeners
-                <div>
-                    Listener #1
+            <div style="display: flex; flex-direction: column; flex: 2; color: #fff; background-color: var(--primary-bg-color);font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;padding: 5px 18px;" class="listeners">
+                <div style="font-family: inherit; font-size: 2em; margin-bottom: 10px; padding-left: 1px;">
+                    Music Party
                 </div>
-                <div>
-                    Listener #2
+
+                <div style="position: relative; margin-bottom: 10px; display: flex;">
+                    <input id="room-input" type="text" placeholder="Enter Room Number" />
+                    <button style="position: absolute; font-weight: 600; margin: auto; right: 10px; height: 100%; border-radius: 5px; text-decoration: none; border: none; background-color: transparent; color: var(--primary-color);">
+                        Join
+                    </button>
+                </div>
+
+                <button id="room-create">
+                    Start a Party 🎉
+                </button>
+
+                <hr style="width: 100%; border-top: 1px solid #2f2f2f; margin: 25px 0;">
+
+                <div style="display: flex; flex: 1; flex-direction: column;">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 0 0 15px 0;">
+                        <div style="width: 25%">
+                            <img style="width: 100%; height: 100%;" src='https://avataaars.io/?avatarStyle=Circle&topType=WinterHat1&accessoriesType=Kurt&hatColor=Pink&facialHairType=Blank&clotheType=Overall&clotheColor=Blue01&eyeType=Dizzy&eyebrowType=Default&mouthType=Tongue&skinColor=Light'/>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-start; margin-top: 9px; white-space: pre-line; width: 70%">
+                            <span>Listener #1</span>
+                            <span style="font-weight: 100; ">MacBook Pro</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                        <div style="width: 25%">
+                            <img style="width: 100%; height: 100%;"
+                                src='https://avataaars.io/?avatarStyle=Circle&topType=ShortHairDreads01&accessoriesType=Kurt&hairColor=BrownDark&facialHairType=BeardMedium&facialHairColor=Red&clotheType=BlazerSweater&eyeType=Squint&eyebrowType=SadConcerned&mouthType=Disbelief&skinColor=Black'                            />
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-start; margin-top: 9px; white-space: pre-line; width: 70%">
+                            <span>Listener #2</span>
+                            <span style="margin-top: 3px; font-weight: 100; ">iPhone X</span>
+                        </div>
+                    </div>
                 </div>
 
 
             </div>
 
-            <div style="flex: 3; display: flex; flex-direction: column; align-items: center; overflow-y: scroll; background-color: var(--secondary-bg-color);padding: 5px;">
+            <div style="flex: 8; display: flex; flex-direction: column; align-items: center; overflow-y: scroll; background-color: var(--secondary-bg-color);padding: 5px;">
 
                 <button id="add-song" style="display: flex; justify-content: space-between; align-items: center; font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif; font-size: 20px;width: 40%; color: #fff;border:none;border-radius: 5px;margin-top: 10px; padding: 9px 13px;">
                     Add a Song to the queue
@@ -32,7 +63,7 @@
 
                 <hr style="width: 100%; border-top: 1px solid #2f2f2f; margin: 25px 0 0 0;">
 
-                <div id="playlist" style="display: flex; flex-direction: column; overflow-y: scroll;">
+                <div id="playlist" style="display: flex; flex-direction: column; overflow-y: scroll; width: 100%;">
                 </div>
             </div>
 
@@ -49,13 +80,13 @@
                     />
                 </div>
                 <div style="width: 55%; display: flex; flex-direction: column; align-items: flex-start;">
-                    <div id="song-title" style="overflow: hidden; width: 100%;">
-                        <p style="font-size: 1.3em; color: #fff; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
+                    <div style="overflow: hidden; width: 100%;">
+                        <p id="song-title" style="font-size: 1.3em; color: #fff; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
                             Land of the Free
                         </p>
                     </div>
-                    <div id="song-artist" style="overflow: hidden; width: 100%;">
-                        <p style="font-size: 1em; color: #dedede; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
+                    <div style="overflow: hidden; width: 100%;">
+                        <p  id="song-artist" style="font-size: 1em; color: #dedede; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
                             Joey Bada$$
                         </p>
                     </div>
@@ -79,7 +110,7 @@
                 </div>
 
                 <div style="display: flex; align-items: center; padding-top: 15px; color: #fff; ">
-                    <audio autoplay id="audio-player"></audio>
+                    <audio preload="none" autoplay id="audio-player"></audio>
                     <time class="time_elapsed" datetime="PT2M30S">0:00</time>
                     <input id="slider" type="range" min="0" max="100" value="0" step="1">
                     <time class="time_remaining" datetime="PT2M30S">-2:30</time>
