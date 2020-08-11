@@ -100,20 +100,19 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .song-card:hover {
-    background-color: #0e0e0e;
+    background-color: #424242;
     box-shadow: none;
 }
 
 .song-card {
     display: flex;
-    justify-content: space-between;
-    min-height: 5vw;
-    max-height: 5vw;
+    width: 100%;
     overflow: hidden;
     cursor: pointer;
-    margin: 5px 25px;
+    padding: 10px 10px;
+    margin: 4px 0;
     font-family: "Gill Sans, Seravek, Trebuchet MS, sans-serif";
-    box-shadow: 2px 2px 0px 1px #0e0e0e;
+    border-radius: 5px;
 }
 
 #play-button, #song-skip-backward, #song-skip-forward {

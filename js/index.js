@@ -3,24 +3,23 @@
 function songElementFn(title, artist, duration) {
     return (`
     <div class="song-card">
-        <div style="width: 8%; height: 100%;">
-            <img style="border-radius: 3px; height: 100%; width: 100%;"/>
+        <div style="border-radius: 50%;width: 65px; height: 65px; margin-right: 10px; overflow: hidden;">
+            <img style="height: 100%; width: 100%;"/>
         </div>
 
-        <div style="width: 93%; margin-left: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; flex: 1; justify-content: space-between; align-items: center; overflow: hidden">
 
-            <div style="display: flex; flex: 9; flex-direction: column; justify-content: space-between; align-items: flex-start">
+            <div style="width: 95%">
                 <div style="font-size: 1.2em; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                     ${title}
                 </div>
 
-                <div style="font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+                <div style="color: rgba(255,255,255,0.45); font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                     ${artist}
                 </div>
-
             </div>
 
-            <div style="flex: 1; text-align: right; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+            <div style="width: 5%; margin-left: 4px; text-align: right; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                 ${duration}
             </div>
 
@@ -79,7 +78,8 @@ function activateAddSongButton() {
                     const duration = `${(tmpAudio.duration / 60).toFixed(0)}:${(tmpAudio.duration % 60).toFixed(0).padStart(2, "0")}`
                     const title  = tags['title'] || file['name']
                     console.log(tags['album'])
-                    const artist = tags['artist'] && (tags['artist'] + ((tags['album'] != 'None' && ` • ${tags['album']}`) || '')) || ''
+                    const album  = (tags['album'] && `• ${tags['album']}`) || ''
+                    const artist = tags['artist'] && (`${tags['artist']} ${album}`) || ''
                     const img    = tags['picture']?.['data'] ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']?.['data']) : 'https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg'
 
                     const div = document.createElement('div')
