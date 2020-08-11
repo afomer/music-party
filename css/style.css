@@ -54,7 +54,7 @@ input[type="range"]::-webkit-slider-thumb {
     outline: none;
     height: 100%;
     width: 100%;
-    padding: 10px 0 10px 20px;
+    padding: 10px 50px 10px 20px;
     border-radius: 25px;
     text-decoration: none;
     border: none;
@@ -64,13 +64,12 @@ input[type="range"]::-webkit-slider-thumb {
 #room-create, #room-create:focus {
     outline: none;
     width: 100%;
-    padding: 10px 0 10px 20px;
+    padding: 10px 20px 10px 20px;
     border-radius: 25px;
     border: none;
     border: none;
     font-weight: 600;
     color: #fff;
-    background-color: var(--primary-color);
 }
 
 .player {
@@ -82,6 +81,36 @@ input[type="range"]::-webkit-slider-thumb {
     background: var(--primary-bg-color);
     padding: 30px 16px;
     border-top: 1px solid var(--primary-color);
+}
+
+.button-style-leave {
+    background-color: #616161;
+    box-shadow: 1px 1px 3px 0px #0e0e0e85;
+}
+
+.button-style-leave:focus {
+    outline: none;
+}
+
+.button-style-leave:active, .button-style-leave:hover {
+    background-color: #424242;
+    box-shadow: 0px 2px #0e0e0e;
+    transform: translate(0px, 1px)
+}
+
+.button-style {
+    background-color: var(--primary-color);
+    box-shadow: 1px 1px 3px 0px #0e0e0e85;
+}
+
+.button-style:focus {
+    outline: none;
+}
+
+.button-style:active {
+    background-color: rgb(57, 63, 146);
+    box-shadow: 2px 2px #0e0e0e;
+    transform: translate(0px, 1px)
 }
 
 #add-song {

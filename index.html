@@ -16,14 +16,16 @@
                     Music Party
                 </div>
 
-                <div style="position: relative; margin-bottom: 10px; display: flex;">
-                    <input id="room-input" type="text" placeholder="Enter Room Number" />
-                    <button style="position: absolute; font-weight: 600; margin: auto; right: 10px; height: 100%; border-radius: 5px; text-decoration: none; border: none; background-color: transparent; color: var(--primary-color);">
-                        Join
-                    </button>
+                <div>
+                    <form id="room-input-form" style="position: relative; margin-bottom: 10px; display: flex;">
+                        <input id="room-input" type="text" placeholder="Enter Room Number" />
+                        <button type="submit" style="position: absolute; font-weight: 600; margin: auto; right: 10px; height: 100%; border-radius: 5px; text-decoration: none; border: none; background-color: transparent; color: var(--primary-color);">
+                            Join
+                        </button>
+                    </form>
                 </div>
 
-                <button id="room-create">
+                <button id="room-create" class="button-style" state="inparty" type="button">
                     Start a Party 🎉
                 </button>
 
@@ -127,7 +129,8 @@
             </div>
 
         </footer>
-
+        <script src="https://cdn.jsdelivr.net/npm/socket.io-client@2/dist/socket.io.js"></script>
         <script src="js/index.js"></script>
+        <script src="js/connection.js"></script>
     </body>
 </html>

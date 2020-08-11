@@ -1,3 +1,6 @@
+let remoteStream = null
+const $slider = document.getElementById('slider')
+const $audio_player = document.getElementById('audio-player')
 
 // Add songs in a list format
 function songElementFn(title, artist, duration) {
@@ -94,8 +97,11 @@ function activateAddSongButton() {
                                 document.getElementById('song-title').textContent  = title
                                 document.getElementById('song-artist').textContent = artist
 
-                                const $slider = document.getElementById('slider')
-                                const $audio_player = document.getElementById('audio-player')
+
+                                const audioCtx = new AudioContext()
+                                const source = audioCtx.createMediaElementSource($audio_player)
+                                source.connect(audioCtx.destination)
+                                remoteStream = audioCtx.createMediaStreamDestination().stream;
 
                                 $audio_player.src = URL.createObjectURL(file)
                                 $audio_player.ontimeupdate = () => {
@@ -207,8 +213,28 @@ activateAddSongButton()
 activatePlayButton()
 activateVolumeSlider()
 
+const unconnected_TEXT = "Start a Party 🎉"
+const connected_TEXT = "Leave the Party"
 
+$room_create = document.getElementById('room-create')
 
+const observer = new MutationObserver(() => {
+    console.log('state')
+    const $room = document.getElementById('room-create')
+    if ($room.getAttribute("state") == "connected"){
+        $room.className = 'button-style-leave'
+        $room.textContent = connected_TEXT
+    } else if ($room.getAttribute("state") == "unconnected") {
+        $room.className = 'button-style'
+        $room.textContent = unconnected_TEXT
+    }
+})
+
+observer.observe($room_create, {
+    attributes: true,
+    attributeFilter: ['state'],
+    characterData: false
+})
 
 // Take care of progressing the bar
 const updateSlider =  (e) => {
