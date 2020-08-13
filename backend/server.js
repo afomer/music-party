@@ -11,6 +11,8 @@ io.on('connection', (socket) => {
     usersIDs[new_id] = socket
     socket.id = new_id
 
+    console.log('[JOIN] ', socket.id)
+
     socket.on('message', ({to, data}) => {
         console.log(to, !!data, data)
         if (usersIDs[to]) {
@@ -33,6 +35,14 @@ io.on('connection', (socket) => {
             })
 
             console.log(`[${peer_from}] => [${peer_to}]`)
+        } else {
+            // Tell the user the other peer is not available
+            const peer_from  = socket.id;
+            const peer_to = to
+
+            socket.emit('disconnected', {
+                "id": peer_to,
+            })
         }
     })
 
@@ -51,7 +61,9 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         usersIDs[socket.id] = null
     })
+
     socket.emit('init', {'id': new_id})
+
 });
 
 
