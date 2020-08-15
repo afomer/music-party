@@ -14,7 +14,7 @@ io.on('connection', (socket) => {
     console.log('[JOIN] ', socket.id)
 
     socket.on('message', ({to, data}) => {
-        console.log(to, !!data, data)
+        console.log(to, !!data, 'desc:', !!data.description, 'candidate:', !!data.candidate)
         if (usersIDs[to]) {
             const peer_from  = socket.id;
             const peer_to = to
