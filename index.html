@@ -12,7 +12,7 @@
     <body style="display: flex; flex-direction: column; height: 100vh; width: 100vw; margin: 0; color: #fff;">
         <div style="display: flex; flex-direction: row; height: 100%; width: 100%;  overflow: hidden;">
             <div style="width: 20%; display: flex; flex-direction: column; flex: 2; color: #fff; background-color: var(--primary-bg-color);font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;padding: 5px 18px;" class="listeners">
-                <div style="font-family: inherit; font-size: 2em; margin-bottom: 10px; padding-left: 1px;">
+                <div id="party-title" style="font-family: inherit; font-size: 2em; margin-bottom: 10px; padding-left: 1px;">
                     Music Party
                 </div>
 
@@ -113,7 +113,7 @@
                 </div>
 
                 <div style="display: flex; align-items: center; padding-top: 15px; color: #fff; ">
-                    <audio preload="none" autoplay id="audio-player"></audio>
+                    <audio autoplay preload="none" id="audio-player"></audio>
                     <time class="time_elapsed" datetime="PT2M30S">0:00</time>
                     <input id="slider" type="range" min="0" max="100" value="0" step="1">
                     <time class="time_remaining" datetime="PT2M30S">-2:30</time>
@@ -130,7 +130,7 @@
 
         </footer>
         <script src="https://cdn.jsdelivr.net/npm/socket.io-client@2/dist/socket.io.js"></script>
-        <script src="js/index.js"></script>
         <script src="js/connection.js"></script>
+        <script src="js/index.js"></script>
     </body>
 </html>

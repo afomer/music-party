@@ -48,12 +48,156 @@ function bytesArrToBase64(arr) {
     return result;
 }
 
+
+class Song {
+    constructor(file="", title="", duration="", artist="", img="") {
+        this.title = title
+        this.artist = artist
+        this.img = img
+        this.file = file
+        this.duration = duration
+    }
+
+    getInfo() {
+        return {
+            file: this.file,
+            title: this.title,
+            duration: this.duration,
+            artist: this.artist,
+            img: this.img
+        }
+    }
+}
+
+class Player {
+
+    constructor() {
+        this.playerPromiseChain = Promise.resolve()
+        this.audioCtx = new AudioContext()
+        this.bufferSource = this.audioCtx.createBufferSource()
+        this.playlist = []
+        this.queue = []
+    }
+
+    addDestinationNode(destinationNode) {
+        try {
+            this.bufferSource.connect(destinationNode)
+        } catch(error) {
+            console.error(error)
+            return false
+        }
+    }
+
+    // Play the i-th song from the playlist, by pushing it to the queue
+    // then playing the top song from the queue from the queue
+    async play(idx=undefined) {
+
+        let playPlaylist = false
+        let playQueue    = false
+
+        // in case you want to play the queue (the idx has to be undefined/null)
+        if (idx == undefined) {
+            if (this.queue.length > 0) {
+                playQueue = true
+            }
+            else {
+                return false
+            }
+        }
+
+        // in case you want to play from the playlist, [idx] has to be a valid index
+        if (0 <= idx && idx < this.playlist.length) {
+            playPlaylist = true
+        }
+
+        if (!playPlaylist && !playQueue) {
+            console.warn('No Song was played because the queue is empty or playlist ID is invalid')
+            return false
+        } else if (playPlaylist) {
+            this.addSongToQueue(idx)
+            songID = idx
+        }
+
+        const songID = this.queue[0]
+        const { file } = this.playlist[songID].getInfo()
+        this.playerPromiseChain = this.playerPromiseChain.then( () => {
+                this.audioCtx.decodeAudioData(file)
+            .then((audioBuffer) => {
+                this.bufferSource = audioBuffer
+                this.bufferSource.play()
+            })
+        })
+
+        return this.playerPromiseChain
+
+    }
+
+    async pause() {
+
+        this.playerPromiseChain = this.playerPromiseChain.then(() => {
+            this.bufferSource.stop()
+        })
+
+        return this.playerPromiseChain
+    }
+
+    addSongToPlaylist(song) {
+
+        if (!(song instanceof Song)) {
+            throw Error(`The song is not a Song Class object,
+                         please use the song object to play songs`)
+        }
+
+        try {
+            this.playlist.push(Song)
+            return true
+        } catch (error) {
+            console.error(error)
+            return false
+        }
+
+    }
+
+    addSongToQueue(idx) {
+
+        if (idx < 0 || idx >= this.playlist.length) {
+            console.error('Invalid Song Playlist ID/Number')
+            return false
+        }
+
+        try {
+            this.queue.push(idx)
+            return true
+        } catch (error) {
+            console.error(error)
+            return false
+        }
+
+    }
+
+    getPlaylist() {
+        return this.playlist
+    }
+    getQueue() {
+        return this.queue
+    }
+
+}
+
+let isPlayerCreated = false
+let PlayerObject    = null
+
 function activateAddSongButton() {
     const inputFileElement = document.createElement('input')
     document.getElementById('add-song').onclick = () => {
         inputFileElement.setAttribute('multiple', '')
         inputFileElement.setAttribute('type', 'file')
         inputFileElement.click()
+
+        if (!isPlayerCreated) {
+            PlayerObject = new Player()
+        }
+
     }
 
     inputFileElement.oninput = (e) => {
@@ -89,6 +233,11 @@ function activateAddSongButton() {
                     div.innerHTML = songElementFn(title, artist, duration).trim()
                     const songCard = div.firstChild
                     songCard.getElementsByTagName('img')[0].src = img
+
+                    PlayerObject.addSongToPlaylist(new Song(file, title, duration, artist, img))
+                    console.log(PlayerObject.getPlaylist(),
+                    PlayerObject.getQueue())
+
                     songCard.onclick = () => {
                         jsmediatags.read(file, {
                             'onSuccess': ({ tags }) => {
@@ -96,13 +245,7 @@ function activateAddSongButton() {
                                 document.getElementById('song-img').src = img
                                 document.getElementById('song-title').textContent  = title
                                 document.getElementById('song-artist').textContent = artist
-
-
-                                const audioCtx = new AudioContext()
-                                const source = audioCtx.createMediaElementSource($audio_player)
-                                source.connect(audioCtx.destination)
-                                remoteStream = audioCtx.createMediaStreamDestination().stream;
-
+                                addAudioToStream($audio_player)
                                 $audio_player.src = URL.createObjectURL(file)
                                 $audio_player.ontimeupdate = () => {
 
@@ -212,7 +355,12 @@ const activateVolumeSlider = () => {
 activateAddSongButton()
 activatePlayButton()
 activateVolumeSlider()
-
+document.getElementById("room-input-form").onsubmit = joinAhost
+document.getElementById('room-create').onclick = () => {
+    if ( createRoom() ) {
+        document.getElementById("party-title").textContent = `You're the host of Party: ${ID}`
+    }
+}
 const unconnected_TEXT = "Start a Party 🎉"
 const connected_TEXT = "Leave the Party"
 
