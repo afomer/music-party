@@ -1,6 +1,41 @@
 let remoteStream = null
+let isPlayerCreated = false
+let PlayerObject    = null
+
 const $slider = document.getElementById('slider')
 const $audio_player = document.getElementById('audio-player')
+$slider.value = 0
+$slider.step = 1
+$slider.min = 0
+$slider.max = $slider.min
+$slider.addEventListener('change', () => $audio_player.currentTime = $slider.value)
+
+$audio_player.ontimeupdate = () => {
+    const duration           = $audio_player.getAttribute("duration")
+    console.log('>', duration)
+    const currentTimeMinutes = `${($audio_player.currentTime / 60).toFixed(0)}`
+    const currentTimeSeconds = `${($audio_player.currentTime % 60).toFixed(0)}`
+
+    const timeLeft    = duration - $audio_player.currentTime
+    const timeLeftMinutes = `${(timeLeft / 60).toFixed(0)}`
+    const timeLeftSeconds = `${(timeLeft % 60).toFixed(0)}`
+
+    document.getElementsByClassName('time_elapsed')[0].datetime  = `PT${currentTimeMinutes}M${currentTimeSeconds}S`
+    document.getElementsByClassName('time_elapsed')[0].innerHTML =`${currentTimeMinutes}:${currentTimeSeconds.padStart(2, "0")}s`
+    document.getElementsByClassName('time_remaining')[0].datetime = `PT$${timeLeftMinutes}M${timeLeftSeconds}S`
+    document.getElementsByClassName('time_remaining')[0].innerHTML = `-${timeLeftMinutes}:${timeLeftSeconds.padStart(2, "0")}s`
+
+    // Trigger 'input' event so listener, can handle it
+    $slider.value = $audio_player.currentTime
+    const event = new Event('input', {
+                        bubbles: true,
+                        cancelable: true
+                    })
+
+    $slider.dispatchEvent(event)
+}
+
+
 
 // Add songs in a list format
 function songElementFn(title, artist, duration) {
@@ -82,6 +117,7 @@ class Player {
     addDestinationNode(destinationNode) {
         try {
             this.bufferSource.connect(destinationNode)
+            return true
         } catch(error) {
             console.error(error)
             return false
@@ -89,7 +125,7 @@ class Player {
     }
 
     // Play the i-th song from the playlist, by pushing it to the queue
-    // then playing the top song from the queue from the queue
+    // then playing the top song from the queue
     async play(idx=undefined) {
 
         let playPlaylist = false
@@ -104,29 +140,35 @@ class Player {
                 return false
             }
         }
-
         // in case you want to play from the playlist, [idx] has to be a valid index
-        if (0 <= idx && idx < this.playlist.length) {
+        else if (0 <= idx && idx < this.playlist.length) {
             playPlaylist = true
         }
 
         if (!playPlaylist && !playQueue) {
             console.warn('No Song was played because the queue is empty or playlist ID is invalid')
             return false
-        } else if (playPlaylist) {
-            this.addSongToQueue(idx)
-            songID = idx
         }
 
-        const songID = this.queue[0]
-        const { file } = this.playlist[songID].getInfo()
-        this.playerPromiseChain = this.playerPromiseChain.then( () => {
-                this.audioCtx.decodeAudioData(file)
+        if (playPlaylist) {
+            this.addSongToQueue(idx)
+        }
+
+        //addAudioToStream($audio_player)
+
+        const songID       = this.queue[0]
+        const audioCtx     = this.getAudioContext()
+        const bufferSource = this.getBufferSource()
+        const { file }     = this.playlist[songID].getInfo()
+        const audioArrayBuffer  = await this.getBufferFromFile(file)
+
+        this.playerPromiseChain = this.playerPromiseChain
+            .then(() => audioCtx.decodeAudioData(audioArrayBuffer))
             .then((audioBuffer) => {
-                this.bufferSource = audioBuffer
-                this.bufferSource.play()
+                bufferSource.buffer = audioBuffer
+                console.log(audioBuffer.duration, audioBuffer.length)
+                bufferSource.start()
             })
-        })
 
         return this.playerPromiseChain
 
@@ -149,11 +191,11 @@ class Player {
         }
 
         try {
-            this.playlist.push(Song)
-            return true
+            this.playlist.push(song)
+            return this.playlist.length - 1
         } catch (error) {
             console.error(error)
-            return false
+            return -1
         }
 
     }
@@ -178,14 +220,100 @@ class Player {
     getPlaylist() {
         return this.playlist
     }
+
     getQueue() {
         return this.queue
     }
 
+    getAudioContext() {
+        return this.audioCtx
+    }
+
+    getBufferSource() {
+        return this.bufferSource
+    }
+
+    getBufferFromFile(file) {
+
+        return new Promise((resolve, reject) => {
+
+            const reader = new FileReader()
+
+            reader.onload = () => {
+                resolve(reader.result)
+            }
+
+            reader.readAsArrayBuffer(file)
+        })
+    }
+
 }
 
-let isPlayerCreated = false
-let PlayerObject    = null
+async function getAudioFileDuration(file) {
+    /* Getting audio duration */
+    const $tmpAudio = document.createElement('audio')
+    $tmpAudio.setAttribute('preload', 'metadata')
+
+    return new Promise((resolve, reject) => {
+
+        $tmpAudio.onloadedmetadata = () => {
+            resolve(Math.floor($tmpAudio.duration))
+        }
+
+        $tmpAudio.src = URL.createObjectURL(file)
+    })
+
+}
+
+const DEFAULT_PIC = 'https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg'
+
+async function getMetadata(file) {
+    return new Promise((resolve, reject) => {
+        jsmediatags.read(file, {
+            'onSuccess': ({ tags }) => resolve(tags),
+            'onFailure': (error) => reject(error)
+        })
+    })
+}
+
+async function handleAudioFile(file) {
+
+    const tags = await getMetadata(file)
+
+    const title  = tags['title'] || file['name']
+    const duration = await getAudioFileDuration(file)
+    console.log('dur', duration)
+
+    const img    = tags['picture']?.['data'] ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']?.['data']) : DEFAULT_PIC
+    const artist = tags['artist']
+    const album  = tags['album']
+    const songObject = new Song(file, title, duration, artist, img)
+
+    const songIdx = PlayerObject.addSongToPlaylist(songObject)
+
+    const durationFormatted = `${(duration / 60).toFixed(0)}:${(duration % 60).toFixed(0).padStart(2, "0")}`
+    const albumFormatted  = (album && `• ${album}`) || ''
+    const artistFormatted = artist && (`${artist} ${albumFormatted}`) || ''
+
+    /* Create Song Card */
+    const div = document.createElement('div')
+    div.innerHTML = songElementFn(title, artistFormatted, durationFormatted).trim()
+    const songCard = div.firstChild
+    songCard.getElementsByTagName('img')[0].src = img
+
+    songCard.onclick = () => {
+        document.getElementById('song-img').src = img
+        document.getElementById('song-title').textContent  = title
+        document.getElementById('song-artist').textContent = artistFormatted
+        PlayerObject.play(songIdx)
+        // Add duration to audio tag
+        $audio_player.getAttribute("duration", duration)
+    }
+
+    // Add the song to UI
+    document.getElementById('playlist').appendChild(songCard)
+}
+
 
 function activateAddSongButton() {
     const inputFileElement = document.createElement('input')
@@ -196,93 +324,18 @@ function activateAddSongButton() {
 
         if (!isPlayerCreated) {
             PlayerObject = new Player()
+            const localAudioContext = PlayerObject.getAudioContext()
+            const localStreamNode = localAudioContext.createMediaStreamDestination()
+            PlayerObject.addDestinationNode(localStreamNode)
+            $audio_player.srcObject = localStreamNode.stream
         }
 
     }
 
     inputFileElement.oninput = (e) => {
-
         // Add all selected files to the array list
         for (const file of e.target.files) {
-
-            /* */
-            jsmediatags.read(file, {
-                'onSuccess': async ({ tags }) => {
-
-                    /* Getting audio duration */
-                    const tmpAudio = document.createElement('audio')
-                    tmpAudio.setAttribute('preload', 'metadata')
-                    tmpAudio.src = URL.createObjectURL(file)
-
-                    // Wait for duration to be recorded
-                    await new Promise((res, rej) => {
-                            tmpAudio.onloadedmetadata = () => {
-                                res()
-                            }
-                        })
-
-                    // save it to duration
-                    const duration = `${(tmpAudio.duration / 60).toFixed(0)}:${(tmpAudio.duration % 60).toFixed(0).padStart(2, "0")}`
-                    const title  = tags['title'] || file['name']
-                    console.log(tags['album'])
-                    const album  = (tags['album'] && `• ${tags['album']}`) || ''
-                    const artist = tags['artist'] && (`${tags['artist']} ${album}`) || ''
-                    const img    = tags['picture']?.['data'] ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']?.['data']) : 'https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg'
-
-                    const div = document.createElement('div')
-                    div.innerHTML = songElementFn(title, artist, duration).trim()
-                    const songCard = div.firstChild
-                    songCard.getElementsByTagName('img')[0].src = img
-
-                    PlayerObject.addSongToPlaylist(new Song(file, title, duration, artist, img))
-                    console.log(PlayerObject.getPlaylist(),
-                    PlayerObject.getQueue())
-
-                    songCard.onclick = () => {
-                        jsmediatags.read(file, {
-                            'onSuccess': ({ tags }) => {
-                                console.log(tags);
-                                document.getElementById('song-img').src = img
-                                document.getElementById('song-title').textContent  = title
-                                document.getElementById('song-artist').textContent = artist
-                                addAudioToStream($audio_player)
-                                $audio_player.src = URL.createObjectURL(file)
-                                $audio_player.ontimeupdate = () => {
-
-                                    const currentTimeMinutes = `${($audio_player.currentTime / 60).toFixed(0)}`
-                                    const currentTimeSeconds = `${($audio_player.currentTime % 60).toFixed(0)}`
-
-                                    const timeLeft    = tmpAudio.duration - $audio_player.currentTime
-                                    const timeLeftMinutes = `${(timeLeft / 60).toFixed(0)}`
-                                    const timeLeftSeconds = `${(timeLeft % 60).toFixed(0)}`
-
-                                    document.getElementsByClassName('time_elapsed')[0].datetime  = `PT${currentTimeMinutes}M${currentTimeSeconds}S`
-                                    document.getElementsByClassName('time_elapsed')[0].innerHTML =`${currentTimeMinutes}:${currentTimeSeconds.padStart(2, "0")}s`
-                                    document.getElementsByClassName('time_remaining')[0].datetime = `PT$${timeLeftMinutes}M${timeLeftSeconds}S`
-                                    document.getElementsByClassName('time_remaining')[0].innerHTML = `-${timeLeftMinutes}:${timeLeftSeconds.padStart(2, "0")}s`
-
-                                    // Trigger 'input' event so listener, can handle it
-                                    $slider.value = $audio_player.currentTime
-                                    const event = new Event('input', {
-                                                        bubbles: true,
-                                                        cancelable: true
-                                                    })
-
-                                    $slider.dispatchEvent(event)
-                                }
-
-                                $slider.value = 0
-                                $slider.step = 1
-                                $slider.min = 0
-                                $slider.max = Math.floor(tmpAudio.duration)
-                                $slider.addEventListener('change', () => $audio_player.currentTime = $slider.value)
-
-                            }
-                        })
-                    }
-                    document.getElementById('playlist').appendChild(songCard)
-                }
-            })
+            handleAudioFile(file)
         }
     }
 }
