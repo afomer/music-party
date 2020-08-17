@@ -8,15 +8,18 @@ $slider.value = 0
 $slider.step = 1
 $slider.min = 0
 $slider.max = $slider.min
+//TODO: The slider should affect the visual of <input type=range />
 $slider.addEventListener('change', () => $audio_player.currentTime = $slider.value)
 
-$audio_player.ontimeupdate = () => {
-    const duration           = $audio_player.getAttribute("duration")
-    console.log('>', duration)
-    const currentTimeMinutes = `${($audio_player.currentTime / 60).toFixed(0)}`
-    const currentTimeSeconds = `${($audio_player.currentTime % 60).toFixed(0)}`
+document.addEventListener("seekTimeUpdate", (event) => {
+    console.log(event, event.duration, event.currentSeekTime)
 
-    const timeLeft    = duration - $audio_player.currentTime
+    const { currentSeekTime, duration } = event.detail
+
+    const currentTimeMinutes = `${(currentSeekTime / 60).toFixed(0)}`
+    const currentTimeSeconds = `${(currentSeekTime % 60).toFixed(0)}`
+
+    const timeLeft    = duration - currentSeekTime
     const timeLeftMinutes = `${(timeLeft / 60).toFixed(0)}`
     const timeLeftSeconds = `${(timeLeft % 60).toFixed(0)}`
 
@@ -26,14 +29,14 @@ $audio_player.ontimeupdate = () => {
     document.getElementsByClassName('time_remaining')[0].innerHTML = `-${timeLeftMinutes}:${timeLeftSeconds.padStart(2, "0")}s`
 
     // Trigger 'input' event so listener, can handle it
-    $slider.value = $audio_player.currentTime
-    const event = new Event('input', {
+    $slider.value = currentSeekTime
+    const eventInput = new Event('input', {
                         bubbles: true,
                         cancelable: true
                     })
 
-    $slider.dispatchEvent(event)
-}
+    $slider.dispatchEvent(eventInput)
+})
 
 
 
@@ -85,12 +88,13 @@ function bytesArrToBase64(arr) {
 
 
 class Song {
+
     constructor(file="", title="", duration="", artist="", img="") {
+        this.file = file
         this.title = title
+        this.duration = duration
         this.artist = artist
         this.img = img
-        this.file = file
-        this.duration = duration
     }
 
     getInfo() {
@@ -102,6 +106,21 @@ class Song {
             img: this.img
         }
     }
+
+    getArrayBufferFromFile() {
+
+        return new Promise((resolve, reject) => {
+
+            const reader = new FileReader()
+
+            reader.onload = () => {
+                resolve(reader.result)
+            }
+
+            reader.readAsArrayBuffer(this.file)
+        })
+    }
+
 }
 
 class Player {
@@ -109,7 +128,9 @@ class Player {
     constructor() {
         this.playerPromiseChain = Promise.resolve()
         this.audioCtx = new AudioContext()
-        this.bufferSource = this.audioCtx.createBufferSource()
+        this.bufferSource    = this.audioCtx.createBufferSource()
+        this.interval        = undefined
+        this.currentSeekTime = 0
         this.playlist = []
         this.queue = []
     }
@@ -159,14 +180,16 @@ class Player {
         const songID       = this.queue[0]
         const audioCtx     = this.getAudioContext()
         const bufferSource = this.getBufferSource()
-        const { file }     = this.playlist[songID].getInfo()
-        const audioArrayBuffer  = await this.getBufferFromFile(file)
+        const audioArrayBuffer  = await this.playlist[songID].getArrayBufferFromFile()
 
         this.playerPromiseChain = this.playerPromiseChain
             .then(() => audioCtx.decodeAudioData(audioArrayBuffer))
             .then((audioBuffer) => {
                 bufferSource.buffer = audioBuffer
-                console.log(audioBuffer.duration, audioBuffer.length)
+                this.setDuration(audioBuffer.duration)
+                this.setSeekTime(0)
+                this.setSeekTimer()
+                document.dispatchEvent(new CustomEvent("play", {bubbles: true}))
                 bufferSource.start()
             })
 
@@ -177,6 +200,11 @@ class Player {
     async pause() {
 
         this.playerPromiseChain = this.playerPromiseChain.then(() => {
+            if (this.interval) {
+                clearInterval(this.interval)
+            }
+            //TODO => this.clearSeekTimeInterval()
+            document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
             this.bufferSource.stop()
         })
 
@@ -233,18 +261,27 @@ class Player {
         return this.bufferSource
     }
 
-    getBufferFromFile(file) {
+    setDuration(duration) {
+        this.duration = duration
+    }
 
-        return new Promise((resolve, reject) => {
-
-            const reader = new FileReader()
-
-            reader.onload = () => {
-                resolve(reader.result)
+    setSeekTime(seekTime) {
+        this.currentSeekTime = seekTime
+        const event = new CustomEvent("seekTimeUpdate", {
+            bubbles: true,
+            detail: {
+                currentSeekTime: this.currentSeekTime / 1000, // milliSeconds => Seconds
+                duration: this.duration
             }
-
-            reader.readAsArrayBuffer(file)
         })
+
+        console.log(this.currentSeekTime, this.duration)
+        document.dispatchEvent(event);
+    }
+
+    setSeekTimer(currentTime) {
+        const intervalInMilliseconds = 1000
+        this.interval = setInterval(() => this.setSeekTime(this.currentSeekTime + intervalInMilliseconds), intervalInMilliseconds)
     }
 
 }
@@ -324,10 +361,9 @@ function activateAddSongButton() {
 
         if (!isPlayerCreated) {
             PlayerObject = new Player()
-            const localAudioContext = PlayerObject.getAudioContext()
-            const localStreamNode = localAudioContext.createMediaStreamDestination()
-            PlayerObject.addDestinationNode(localStreamNode)
-            $audio_player.srcObject = localStreamNode.stream
+            // connect to my speakers
+            const speakers = PlayerObject.getAudioContext().destination
+            PlayerObject.addDestinationNode(speakers)
         }
 
     }
@@ -350,12 +386,12 @@ const changePlayButtonUI = ({ isPlaying, buttonStyle }) => {
 
 const playAudio = () => {
     changePlayButtonUI({ isPlaying: true, buttonStyle: playStyle })
-    return document.getElementsByTagName('audio')[0].play()
+    return PlayerObject.play()
 }
 
 const pauseAudio = () => {
     changePlayButtonUI({ isPlaying: false, buttonStyle: pauseStyle })
-    return document.getElementsByTagName('audio')[0].pause()
+    return PlayerObject.pause()
 }
 
 function activatePlayButton() {
@@ -374,13 +410,13 @@ function activatePlayButton() {
 
     }
 
-    document.getElementById('audio-player').onpause = (e) => {
+    document.addEventListener("pause", (e) => {
         changePlayButtonUI({ isPlaying: false, buttonStyle: playStyle })
-    }
+    })
 
-    document.getElementById('audio-player').onplay = (e) => {
+    document.addEventListener("play", (e) => {
         changePlayButtonUI({ isPlaying: true, buttonStyle: pauseStyle })
-    }
+    })
 }
 
 const activateVolumeSlider = () => {
