@@ -128,16 +128,18 @@ class Player {
     constructor() {
         this.playerPromiseChain = Promise.resolve()
         this.audioCtx = new AudioContext()
-        this.bufferSource    = this.audioCtx.createBufferSource()
+        this.bufferSource    = undefined
+        this.duration        = undefined
         this.interval        = undefined
-        this.currentSeekTime = 0
+        this.currentSeekTime = undefined
         this.playlist = []
         this.queue = []
+        this.destinations = []
     }
 
     addDestinationNode(destinationNode) {
         try {
-            this.bufferSource.connect(destinationNode)
+            this.getBufferSource().connect(destinationNode)
             return true
         } catch(error) {
             console.error(error)
@@ -177,35 +179,48 @@ class Player {
 
         //addAudioToStream($audio_player)
 
+
         const songID       = this.queue[0]
         const audioCtx     = this.getAudioContext()
         const bufferSource = this.getBufferSource()
         const audioArrayBuffer  = await this.playlist[songID].getArrayBufferFromFile()
+
 
         this.playerPromiseChain = this.playerPromiseChain
             .then(() => audioCtx.decodeAudioData(audioArrayBuffer))
             .then((audioBuffer) => {
                 bufferSource.buffer = audioBuffer
                 this.setDuration(audioBuffer.duration)
-                this.setSeekTime(0)
+                this.setSeekTime(this.currentSeekTime || 0)
+                console.log('seekTime: ', this.currentSeekTime/1000)
+                bufferSource.start(0, this.currentSeekTime/1000)
                 this.setSeekTimer()
                 document.dispatchEvent(new CustomEvent("play", {bubbles: true}))
-                bufferSource.start()
             })
 
         return this.playerPromiseChain
+    }
 
+    async stop() {
+
+        this.playerPromiseChain = this.playerPromiseChain.then(() => {
+            this.getBufferSource().stop()
+            clearInterval(this.interval)
+            this.resetSeekTime(undefined)
+            this.bufferSource = undefined
+            document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
+        })
+
+        return this.playerPromiseChain
     }
 
     async pause() {
 
         this.playerPromiseChain = this.playerPromiseChain.then(() => {
-            if (this.interval) {
-                clearInterval(this.interval)
-            }
-            //TODO => this.clearSeekTimeInterval()
+            this.getBufferSource().stop()
+            clearInterval(this.interval)
+            this.bufferSource = undefined
             document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
-            this.bufferSource.stop()
         })
 
         return this.playerPromiseChain
@@ -258,11 +273,20 @@ class Player {
     }
 
     getBufferSource() {
+        if (this.bufferSource == undefined) {
+            this.bufferSource = this.audioCtx.createBufferSource()
+            this.bufferSource.connect(this.audioCtx.destination)
+        }
+
         return this.bufferSource
     }
 
     setDuration(duration) {
         this.duration = duration
+    }
+
+    resetSeekTime(seekTime) {
+        this.currentSeekTime = undefined
     }
 
     setSeekTime(seekTime) {
@@ -280,8 +304,18 @@ class Player {
     }
 
     setSeekTimer(currentTime) {
-        const intervalInMilliseconds = 1000
-        this.interval = setInterval(() => this.setSeekTime(this.currentSeekTime + intervalInMilliseconds), intervalInMilliseconds)
+        const intervalInMilliseconds = 500
+        const duration               = this.duration * 1000
+        this.interval = setInterval(() => {
+
+          console.log('duration >>', duration, this.currentSeekTime)
+          if (this.currentSeekTime + intervalInMilliseconds > duration ) {
+                this.setSeekTime(duration)
+            } else {
+                this.setSeekTime(this.currentSeekTime + intervalInMilliseconds)
+            }
+
+        }, intervalInMilliseconds)
     }
 
 }
@@ -360,10 +394,8 @@ function activateAddSongButton() {
         inputFileElement.click()
 
         if (!isPlayerCreated) {
+            // connecting to speakers happens inside
             PlayerObject = new Player()
-            // connect to my speakers
-            const speakers = PlayerObject.getAudioContext().destination
-            PlayerObject.addDestinationNode(speakers)
         }
 
     }
@@ -371,7 +403,11 @@ function activateAddSongButton() {
     inputFileElement.oninput = (e) => {
         // Add all selected files to the array list
         for (const file of e.target.files) {
-            handleAudioFile(file)
+            if (file.type.match("audio*")) {
+                handleAudioFile(file)
+            } else {
+                // TODO: show a notification of not showing
+            }
         }
     }
 }
