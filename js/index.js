@@ -7,9 +7,8 @@ const $audio_player = document.getElementById('audio-player')
 $slider.value = 0
 $slider.step = 1
 $slider.min = 0
-$slider.max = $slider.min
+$slider.max = 100
 //TODO: The slider should affect the visual of <input type=range />
-$slider.addEventListener('change', () => $audio_player.currentTime = $slider.value)
 
 document.addEventListener("seekTimeUpdate", (event) => {
     console.log(event, event.duration, event.currentSeekTime)
@@ -29,7 +28,9 @@ document.addEventListener("seekTimeUpdate", (event) => {
     document.getElementsByClassName('time_remaining')[0].innerHTML = `-${timeLeftMinutes}:${timeLeftSeconds.padStart(2, "0")}s`
 
     // Trigger 'input' event so listener, can handle it
-    $slider.value = currentSeekTime
+    $slider.value = Math.floor((currentSeekTime/duration) * $slider.max)
+    console.log($slider.value)
+
     const eventInput = new Event('input', {
                         bubbles: true,
                         cancelable: true
@@ -147,6 +148,10 @@ class Player {
         }
     }
 
+    calculateSeekTimeFromSlider() {
+        return ($slider.value/$slider.max) * this.duration
+    }
+
     // Play the i-th song from the playlist, by pushing it to the queue
     // then playing the top song from the queue
     async play(idx=undefined) {
@@ -179,21 +184,24 @@ class Player {
 
         //addAudioToStream($audio_player)
 
-
         const songID       = this.queue[0]
         const audioCtx     = this.getAudioContext()
         const bufferSource = this.getBufferSource()
         const audioArrayBuffer  = await this.playlist[songID].getArrayBufferFromFile()
-
 
         this.playerPromiseChain = this.playerPromiseChain
             .then(() => audioCtx.decodeAudioData(audioArrayBuffer))
             .then((audioBuffer) => {
                 bufferSource.buffer = audioBuffer
                 this.setDuration(audioBuffer.duration)
-                this.setSeekTime(this.currentSeekTime || 0)
-                console.log('seekTime: ', this.currentSeekTime/1000)
-                bufferSource.start(0, this.currentSeekTime/1000)
+
+                //TODO when you pick the song for the first time, you go from the beginning
+                // flag for never paused
+                this.currentSeekTime = this.calculateSeekTimeFromSlider()
+                console.log('curr: ', this.currentSeekTime)
+                this.setSeekTime(this.currentSeekTime)
+                console.log('seekTime: ', this.currentSeekTime )
+                bufferSource.start(0, Math.floor(this.currentSeekTime/1000) )
                 this.setSeekTimer()
                 document.dispatchEvent(new CustomEvent("play", {bubbles: true}))
             })
@@ -378,7 +386,7 @@ async function handleAudioFile(file) {
         document.getElementById('song-artist').textContent = artistFormatted
         PlayerObject.play(songIdx)
         // Add duration to audio tag
-        $audio_player.getAttribute("duration", duration)
+        $audio_player.setAttribute("duration", duration)
     }
 
     // Add the song to UI
@@ -514,6 +522,7 @@ const updateSlider =  (e) => {
     const rangeMin = e.target.min
     const rangeMax = e.target.max
     const value = e.target.value
+    console.log(rangeMin, rangeMax, value)
     e.target.style['background-size'] = `${((value - rangeMin) * 100 / (rangeMax - rangeMin))}% 100%`
 }
 
