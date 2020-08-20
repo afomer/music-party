@@ -29,7 +29,6 @@ document.addEventListener("seekTimeUpdate", (event) => {
 
     // Trigger 'input' event so listener, can handle it
     $slider.value = Math.floor((currentSeekTime/duration) * $slider.max)
-    console.log($slider.value)
 
     const eventInput = new Event('input', {
                         bubbles: true,
@@ -51,7 +50,7 @@ function songElementFn(title, artist, duration) {
 
         <div style="display: flex; flex: 1; justify-content: space-between; align-items: center; overflow: hidden">
 
-            <div style="width: 95%">
+            <div style="width: 90%">
                 <div style="font-size: 1.2em; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                     ${title}
                 </div>
@@ -61,7 +60,7 @@ function songElementFn(title, artist, duration) {
                 </div>
             </div>
 
-            <div style="width: 5%; margin-left: 4px; text-align: right; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+            <div style="width: 10%; margin-left: 4px; text-align: right; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                 ${duration}
             </div>
 
@@ -188,16 +187,15 @@ class Player {
         const audioCtx     = this.getAudioContext()
         const bufferSource = this.getBufferSource()
         const audioArrayBuffer  = await this.playlist[songID].getArrayBufferFromFile()
+        this.setDuration(this.playlist[songID].getInfo().duration)
 
         this.playerPromiseChain = this.playerPromiseChain
             .then(() => audioCtx.decodeAudioData(audioArrayBuffer))
             .then((audioBuffer) => {
                 bufferSource.buffer = audioBuffer
-                this.setDuration(audioBuffer.duration)
-
                 //TODO when you pick the song for the first time, you go from the beginning
                 // flag for never paused
-                this.currentSeekTime = this.calculateSeekTimeFromSlider()
+                this.currentSeekTime = this.calculateSeekTimeFromSlider() * 1000
                 console.log('curr: ', this.currentSeekTime)
                 this.setSeekTime(this.currentSeekTime)
                 console.log('seekTime: ', this.currentSeekTime )
@@ -234,6 +232,10 @@ class Player {
         return this.playerPromiseChain
     }
 
+    async seek() {
+        //TODO Seek!
+    }
+
     addSongToPlaylist(song) {
 
         if (!(song instanceof Song)) {
@@ -260,6 +262,33 @@ class Player {
 
         try {
             this.queue.push(idx)
+
+            const title = this.playlist[idx].title
+            const album = this.playlist[idx].album
+            const artist = this.playlist[idx].artist
+            const duration = this.playlist[idx].duration
+            const img = this.playlist[idx].img
+            const durationFormatted = `${(duration / 60).toFixed(0)}:${(duration % 60).toFixed(0).padStart(2, "0")}`
+            const albumFormatted  = (album && `• ${album}`) || ''
+            const artistFormatted = artist && (`${artist} ${albumFormatted}`) || ''
+
+            const div = document.createElement('div')
+            div.innerHTML = songElementFn(title, artistFormatted, durationFormatted).trim()
+            const songCard = div.firstChild
+            songCard.getElementsByTagName('img')[0].src = img
+
+            songCard.onclick = () => {
+                document.getElementById('song-img').src = img
+                document.getElementById('song-title').textContent  = title
+                document.getElementById('song-artist').textContent = artistFormatted
+                PlayerObject.play(songIdx)
+                // Add duration to audio tag
+                $audio_player.setAttribute("duration", duration)
+            }
+
+            // Add the song to UI
+            document.getElementById('queue').appendChild(songCard)
+
             return true
         } catch (error) {
             console.error(error)
