@@ -11,9 +11,8 @@ $slider.max = 100
 //TODO: The slider should affect the visual of <input type=range />
 
 document.addEventListener("seekTimeUpdate", (event) => {
-    console.log(event, event.duration, event.currentSeekTime)
-
-    const { currentSeekTime, duration } = event.detail
+    const currentSeekTime = event.detail.currentSeekTime / 1000
+    const duration        = event.detail.duration
 
     const currentTimeMinutes = `${(currentSeekTime / 60).toFixed(0)}`
     const currentTimeSeconds = `${(currentSeekTime % 60).toFixed(0)}`
@@ -148,56 +147,46 @@ class Player {
     }
 
     calculateSeekTimeFromSlider() {
-        return ($slider.value/$slider.max) * this.duration
+        return ($slider.value/$slider.max) * this.duration * 1000
     }
 
     // Play the i-th song from the playlist, by pushing it to the queue
     // then playing the top song from the queue
     async play(idx=undefined) {
 
-        let playPlaylist = false
-        let playQueue    = false
+        const playFromPlaylist = idx != undefined
+        const playFromQueue    = idx == undefined && this.queue.length > 0
 
-        // in case you want to play the queue (the idx has to be undefined/null)
-        if (idx == undefined) {
-            if (this.queue.length > 0) {
-                playQueue = true
-            }
-            else {
-                return false
-            }
-        }
-        // in case you want to play from the playlist, [idx] has to be a valid index
-        else if (0 <= idx && idx < this.playlist.length) {
-            playPlaylist = true
-        }
-
-        if (!playPlaylist && !playQueue) {
+        if (!playFromQueue && !playFromPlaylist) {
             console.warn('No Song was played because the queue is empty or playlist ID is invalid')
             return false
         }
 
-        if (playPlaylist) {
+        const chosenSong = playFromPlaylist ? this.playlist[idx] : this.playlist[this.queue[0]]
+        const mostRecentSong = this.queue.length > 0 ? this.playlist[this.queue[0]] : undefined
+
+        // if the song is not playing already start seek at 0
+        // else continue using the last used seek
+        this.setDuration(chosenSong.getInfo().duration)
+        console.log(chosenSong, mostRecentSong)
+        if (chosenSong != mostRecentSong) {
+            this.setSeekTime(0)
+        }
+
+        // if you're playing from the playlist, add the song to the top of the queue
+        if (playFromPlaylist) {
             this.addSongToQueue(idx)
         }
 
-        //addAudioToStream($audio_player)
-
-        const songID       = this.queue[0]
         const audioCtx     = this.getAudioContext()
         const bufferSource = this.getBufferSource()
-        const audioArrayBuffer  = await this.playlist[songID].getArrayBufferFromFile()
-        this.setDuration(this.playlist[songID].getInfo().duration)
+        const audioArrayBuffer  = await chosenSong.getArrayBufferFromFile()
 
         this.playerPromiseChain = this.playerPromiseChain
             .then(() => audioCtx.decodeAudioData(audioArrayBuffer))
             .then((audioBuffer) => {
                 bufferSource.buffer = audioBuffer
-                //TODO when you pick the song for the first time, you go from the beginning
                 // flag for never paused
-                this.currentSeekTime = this.calculateSeekTimeFromSlider() * 1000
-                console.log('curr: ', this.currentSeekTime)
-                this.setSeekTime(this.currentSeekTime)
                 console.log('seekTime: ', this.currentSeekTime )
                 bufferSource.start(0, Math.floor(this.currentSeekTime/1000) )
                 this.setSeekTimer()
@@ -212,7 +201,6 @@ class Player {
         this.playerPromiseChain = this.playerPromiseChain.then(() => {
             this.getBufferSource().stop()
             clearInterval(this.interval)
-            this.resetSeekTime(undefined)
             this.bufferSource = undefined
             document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
         })
@@ -220,20 +208,22 @@ class Player {
         return this.playerPromiseChain
     }
 
-    async pause() {
+    async seek(seekVal=undefined) {
+        
+        // if it's already playing stop it
+        if (this.bufferSource) {
+            await this.stop()
+        }
 
-        this.playerPromiseChain = this.playerPromiseChain.then(() => {
-            this.getBufferSource().stop()
-            clearInterval(this.interval)
-            this.bufferSource = undefined
-            document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
-        })
+        if (Number(seekVal)) {
+            this.setSeekTime(seekVal)
+        } else {
+            this.setSeekTime(this.calculateSeekTimeFromSlider())
+        }
 
-        return this.playerPromiseChain
-    }
 
-    async seek() {
-        //TODO Seek!
+
+        return this.play()
     }
 
     addSongToPlaylist(song) {
@@ -331,21 +321,18 @@ class Player {
         const event = new CustomEvent("seekTimeUpdate", {
             bubbles: true,
             detail: {
-                currentSeekTime: this.currentSeekTime / 1000, // milliSeconds => Seconds
+                currentSeekTime: this.currentSeekTime,
                 duration: this.duration
             }
         })
 
-        console.log(this.currentSeekTime, this.duration)
         document.dispatchEvent(event);
     }
 
     setSeekTimer(currentTime) {
         const intervalInMilliseconds = 500
-        const duration               = this.duration * 1000
+        const duration               = this.duration * 1000 // Seconds => Milliseconds
         this.interval = setInterval(() => {
-
-          console.log('duration >>', duration, this.currentSeekTime)
           if (this.currentSeekTime + intervalInMilliseconds > duration ) {
                 this.setSeekTime(duration)
             } else {
@@ -390,7 +377,6 @@ async function handleAudioFile(file) {
 
     const title  = tags['title'] || file['name']
     const duration = await getAudioFileDuration(file)
-    console.log('dur', duration)
 
     const img    = tags['picture']?.['data'] ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']?.['data']) : DEFAULT_PIC
     const artist = tags['artist']
@@ -464,7 +450,7 @@ const playAudio = () => {
 
 const pauseAudio = () => {
     changePlayButtonUI({ isPlaying: false, buttonStyle: pauseStyle })
-    return PlayerObject.pause()
+    return PlayerObject.stop() // Web Audio API has only play/stop
 }
 
 function activatePlayButton() {
@@ -495,7 +481,7 @@ function activatePlayButton() {
 const activateVolumeSlider = () => {
     // Set up initial value
     $volume_range = document.getElementById('volume-range')
-    console.log(document.getElementById('audio-player').volume)
+
     $volume_range.value = document.getElementById('audio-player').volume
     $volume_range.style['background-size'] = `${(($volume_range.value - $volume_range.min) * 100 / ($volume_range.max - $volume_range.min))}% 100%`
 
@@ -551,11 +537,13 @@ const updateSlider =  (e) => {
     const rangeMin = e.target.min
     const rangeMax = e.target.max
     const value = e.target.value
-    console.log(rangeMin, rangeMax, value)
     e.target.style['background-size'] = `${((value - rangeMin) * 100 / (rangeMax - rangeMin))}% 100%`
 }
 
 for (const elem of document.querySelectorAll('input[type="range"]')) {
     elem.addEventListener('input', updateSlider)
-    elem.addEventListener('change', updateSlider)
+    elem.addEventListener('change', (e) => {
+        updateSlider(e)
+        PlayerObject.seek()
+    })
 }
