@@ -3,6 +3,7 @@ let isPlayerCreated = false
 let PlayerObject    = null
 
 const $slider = document.getElementById('slider')
+const $volume_range = document.getElementById('volume-range')
 const $audio_player = document.getElementById('audio-player')
 $slider.value = 0
 $slider.step = 1
@@ -133,12 +134,26 @@ class Player {
         this.currentSeekTime = undefined
         this.playlist = []
         this.queue = []
-        this.destinations = []
+        this.destinations = [this.audioCtx.destination] // always have the speakers as one of the destinations
+        this.gains        = [this.audioCtx.createGain()] // a gain for the speaker
     }
 
-    addDestinationNode(destinationNode) {
+    addDestinationNode(destinationNode, bufferSource) {
+        const nodeIndex = this.destinations.findIndex(dest => dest == destinationNode)
+        const foundNode = nodeIndex != -1
+
         try {
-            this.getBufferSource().connect(destinationNode)
+            const node = foundNode ? this.destinations[nodeIndex] : destinationNode
+            const gainNode = foundNode && this.gains.length < nodeIndex ? this.gains[nodeIndex] : this.audioCtx.createGain()
+            gainNode.gain.setValueAtTime(Number($volume_range.value), this.audioCtx.currentTime)
+            gainNode.connect(node)
+            bufferSource.connect(gainNode)
+            console.log(foundNode, nodeIndex, '<<<')
+            // if it's a newly created gain, add it to the gains array
+            if (!foundNode || this.gains.length >= nodeIndex) {
+                this.gains.push(gainNode)
+            }
+
             return true
         } catch(error) {
             console.error(error)
@@ -168,13 +183,14 @@ class Player {
         // if the song is not playing already start seek at 0
         // else continue using the last used seek
         this.setDuration(chosenSong.getInfo().duration)
-        console.log(chosenSong, mostRecentSong)
+        console.log(chosenSong, mostRecentSong, this.duration, 'currentSeek:', this.currentSeekTime)
         if (chosenSong != mostRecentSong) {
             this.setSeekTime(0)
         }
 
         // if you're playing from the playlist, add the song to the top of the queue
         if (playFromPlaylist) {
+            this.emptyQueue()
             this.addSongToQueue(idx)
         }
 
@@ -202,6 +218,7 @@ class Player {
             this.getBufferSource().stop()
             clearInterval(this.interval)
             this.bufferSource = undefined
+            this.gains        = []
             document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
         })
 
@@ -209,7 +226,7 @@ class Player {
     }
 
     async seek(seekVal=undefined) {
-        
+
         // if it's already playing stop it
         if (this.bufferSource) {
             await this.stop()
@@ -220,8 +237,6 @@ class Player {
         } else {
             this.setSeekTime(this.calculateSeekTimeFromSlider())
         }
-
-
 
         return this.play()
     }
@@ -241,6 +256,14 @@ class Player {
             return -1
         }
 
+    }
+
+    emptyQueue() {
+        this.queue = []
+    }
+
+    removeFromQueue() {
+        return this.queue.pop()
     }
 
     addSongToQueue(idx) {
@@ -287,6 +310,13 @@ class Player {
 
     }
 
+    changeVolume(volume) {
+        console.log(volume, this.gains)
+        for (let gainNode of this.gains) {
+            gainNode.gain.setValueAtTime(volume, this.audioCtx.currentTime)
+        }
+    }
+
     getPlaylist() {
         return this.playlist
     }
@@ -300,9 +330,13 @@ class Player {
     }
 
     getBufferSource() {
+
         if (this.bufferSource == undefined) {
             this.bufferSource = this.audioCtx.createBufferSource()
-            this.bufferSource.connect(this.audioCtx.destination)
+        }
+
+        for (const dest of this.destinations) {
+            this.addDestinationNode(dest, this.bufferSource)
         }
 
         return this.bufferSource
@@ -329,11 +363,13 @@ class Player {
         document.dispatchEvent(event);
     }
 
+// TODO how to pause naturally and start from beginning
     setSeekTimer(currentTime) {
         const intervalInMilliseconds = 500
         const duration               = this.duration * 1000 // Seconds => Milliseconds
         this.interval = setInterval(() => {
           if (this.currentSeekTime + intervalInMilliseconds > duration ) {
+                //Once the whole song is consumed stop the interval timer
                 this.setSeekTime(duration)
             } else {
                 this.setSeekTime(this.currentSeekTime + intervalInMilliseconds)
@@ -480,7 +516,6 @@ function activatePlayButton() {
 
 const activateVolumeSlider = () => {
     // Set up initial value
-    $volume_range = document.getElementById('volume-range')
 
     $volume_range.value = document.getElementById('audio-player').volume
     $volume_range.style['background-size'] = `${(($volume_range.value - $volume_range.min) * 100 / ($volume_range.max - $volume_range.min))}% 100%`
@@ -540,10 +575,17 @@ const updateSlider =  (e) => {
     e.target.style['background-size'] = `${((value - rangeMin) * 100 / (rangeMax - rangeMin))}% 100%`
 }
 
-for (const elem of document.querySelectorAll('input[type="range"]')) {
-    elem.addEventListener('input', updateSlider)
-    elem.addEventListener('change', (e) => {
-        updateSlider(e)
-        PlayerObject.seek()
-    })
-}
+// Visually update the slider immedietly when its value changes
+$slider.addEventListener('input', updateSlider)
+$volume_range.addEventListener('input', updateSlider)
+
+// Once the change happens, update the logic
+$slider.addEventListener('change', (e) => {
+    updateSlider(e)
+    PlayerObject.seek()
+})
+$volume_range.addEventListener('change', (e) => {
+    updateSlider(e)
+    const volumeValue = Number(e.target.value)
+    PlayerObject.changeVolume(volumeValue)
+})
