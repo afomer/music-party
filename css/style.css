@@ -24,7 +24,7 @@ input[type="range"] {
     background-image: -webkit-gradient(linear, 50% 0%, 50% 100%, color-stop(0%, var(--primary-color)), color-stop(100%, var(--primary-color)));
     background-size: 0% 100%;
     background-repeat: no-repeat;
-    margin: 0 10px;
+    margin: 0 15px;
 }
 
 input[type="range"]:focus {

@@ -23,12 +23,13 @@ document.addEventListener("seekTimeUpdate", (event) => {
     const timeLeftSeconds = `${(timeLeft % 60).toFixed(0)}`
 
     document.getElementsByClassName('time_elapsed')[0].datetime  = `PT${currentTimeMinutes}M${currentTimeSeconds}S`
-    document.getElementsByClassName('time_elapsed')[0].innerHTML =`${currentTimeMinutes}:${currentTimeSeconds.padStart(2, "0")}s`
+    document.getElementsByClassName('time_elapsed')[0].innerHTML =`${currentTimeMinutes}:${currentTimeSeconds.padStart(2, "0")}`
     document.getElementsByClassName('time_remaining')[0].datetime = `PT$${timeLeftMinutes}M${timeLeftSeconds}S`
-    document.getElementsByClassName('time_remaining')[0].innerHTML = `-${timeLeftMinutes}:${timeLeftSeconds.padStart(2, "0")}s`
+    document.getElementsByClassName('time_remaining')[0].innerHTML = `-${timeLeftMinutes}:${timeLeftSeconds.padStart(2, "0")}`
 
     // Trigger 'input' event so listener, can handle it
     $slider.value = Math.floor((currentSeekTime/duration) * $slider.max)
+    $slider.setAttribute("value", Math.floor((currentSeekTime/duration) * $slider.max))
 
     const eventInput = new Event('input', {
                         bubbles: true,
@@ -125,7 +126,13 @@ class Song {
 
 class Player {
 
+    //Player STATES
+    PAUSED  = "PAUSED"
+    PLAYING = "PLAYING"
+    IDLE    = "IDLE"
+
     constructor() {
+        this.state = this.IDLE
         this.playerPromiseChain = Promise.resolve()
         this.audioCtx = new AudioContext()
         this.bufferSource    = undefined
@@ -183,8 +190,8 @@ class Player {
         // if the song is not playing already start seek at 0
         // else continue using the last used seek
         this.setDuration(chosenSong.getInfo().duration)
-        console.log(chosenSong, mostRecentSong, this.duration, 'currentSeek:', this.currentSeekTime)
-        if (chosenSong != mostRecentSong) {
+        console.log(chosenSong, mostRecentSong, this.duration, 'currentSeek:', this.currentSeekTime, this.duration <= this.currentSeekTime)
+        if (this.state == this.IDLE) {
             this.setSeekTime(0)
         }
 
@@ -207,6 +214,15 @@ class Player {
                 bufferSource.start(0, Math.floor(this.currentSeekTime/1000) )
                 this.setSeekTimer()
                 document.dispatchEvent(new CustomEvent("play", {bubbles: true}))
+                this.state = this.PLAYING
+                bufferSource.onended = () => {
+                    console.log(this.duration, this.currentSeekTime, this.duration <= this.currentSeekTime)
+                    if (this.duration <= Math.floor(this.currentSeekTime/1000) ) {
+                       this.state = this.IDLE
+                       this.setSeekTime(0)
+                       document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
+                    }
+                }
             })
 
         return this.playerPromiseChain
@@ -215,10 +231,11 @@ class Player {
     async stop() {
 
         this.playerPromiseChain = this.playerPromiseChain.then(() => {
-            this.getBufferSource().stop()
-            clearInterval(this.interval)
+            if (this.bufferSource) {
+                this.getBufferSource().stop()
+            }
+            this.state = this.PAUSED
             this.bufferSource = undefined
-            this.gains        = []
             document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
         })
 
@@ -368,7 +385,11 @@ class Player {
         const intervalInMilliseconds = 500
         const duration               = this.duration * 1000 // Seconds => Milliseconds
         this.interval = setInterval(() => {
-          if (this.currentSeekTime + intervalInMilliseconds > duration ) {
+
+          if (this.state == this.IDLE || this.state == this.PAUSED) {
+                clearInterval(this.interval)
+          }
+          else if (this.currentSeekTime + intervalInMilliseconds > duration ) {
                 //Once the whole song is consumed stop the interval timer
                 this.setSeekTime(duration)
             } else {
