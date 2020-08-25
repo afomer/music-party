@@ -12,8 +12,9 @@ $slider.max = 100
 //TODO: The slider should affect the visual of <input type=range />
 
 document.addEventListener("seekTimeUpdate", (event) => {
+
     const currentSeekTime = event.detail.currentSeekTime / 1000
-    const duration        = event.detail.duration
+    const duration        = event.detail.duration / 1000
 
     const currentTimeMinutes = `${(currentSeekTime / 60).toFixed(0)}`
     const currentTimeSeconds = `${(currentSeekTime % 60).toFixed(0)}`
@@ -428,6 +429,8 @@ async function getMetadata(file) {
     })
 }
 
+const PlayerSTATE = new PlayerFSM()
+
 async function handleAudioFile(file) {
 
     const tags = await getMetadata(file)
@@ -440,7 +443,7 @@ async function handleAudioFile(file) {
     const album  = tags['album']
     const songObject = new Song(file, title, duration, artist, img)
 
-    const songIdx = PlayerObject.addSongToPlaylist(songObject)
+    const songIdx = PlayerSTATE.addSongToPlaylist(songObject)
 
     const durationFormatted = `${(duration / 60).toFixed(0)}:${(duration % 60).toFixed(0).padStart(2, "0")}`
     const albumFormatted  = (album && `• ${album}`) || ''
@@ -456,7 +459,8 @@ async function handleAudioFile(file) {
         document.getElementById('song-img').src = img
         document.getElementById('song-title').textContent  = title
         document.getElementById('song-artist').textContent = artistFormatted
-        PlayerObject.play(songIdx)
+
+        PlayerSTATE.play(songIdx)
         // Add duration to audio tag
         $audio_player.setAttribute("duration", duration)
     }
@@ -502,12 +506,12 @@ const changePlayButtonUI = ({ isPlaying, buttonStyle }) => {
 
 const playAudio = () => {
     changePlayButtonUI({ isPlaying: true, buttonStyle: playStyle })
-    return PlayerObject.play()
+    return PlayerSTATE.play()
 }
 
 const pauseAudio = () => {
     changePlayButtonUI({ isPlaying: false, buttonStyle: pauseStyle })
-    return PlayerObject.stop() // Web Audio API has only play/stop
+    return PlayerSTATE.pause() // Web Audio API has only play/stop
 }
 
 function activatePlayButton() {
@@ -600,10 +604,14 @@ const updateSlider =  (e) => {
 $slider.addEventListener('input', updateSlider)
 $volume_range.addEventListener('input', updateSlider)
 
+function calculateSeekTimeFromSlider() {
+    return ($slider.value/$slider.max)
+}
+
 // Once the change happens, update the logic
 $slider.addEventListener('change', (e) => {
     updateSlider(e)
-    PlayerObject.seek()
+    PlayerSTATE.seek(calculateSeekTimeFromSlider())
 })
 $volume_range.addEventListener('change', (e) => {
     updateSlider(e)
