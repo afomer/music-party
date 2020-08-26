@@ -11,7 +11,7 @@ $slider.min = 0
 $slider.max = 100
 //TODO: The slider should affect the visual of <input type=range />
 
-document.addEventListener("seekTimeUpdate", (event) => {
+document.addEventListener("SEEK_TIME_UPDATE", (event) => {
 
     const currentSeekTime = event.detail.currentSeekTime / 1000
     const duration        = event.detail.duration / 1000
@@ -214,14 +214,14 @@ class Player {
                 console.log('seekTime: ', this.currentSeekTime )
                 bufferSource.start(0, Math.floor(this.currentSeekTime/1000) )
                 this.setSeekTimer()
-                document.dispatchEvent(new CustomEvent("play", {bubbles: true}))
+                document.dispatchEvent(new CustomEvent("PLAY", {bubbles: true}))
                 this.state = this.PLAYING
                 bufferSource.onended = () => {
                     console.log(this.duration, this.currentSeekTime, this.duration <= this.currentSeekTime)
                     if (this.duration <= Math.floor(this.currentSeekTime/1000) ) {
                        this.state = this.IDLE
                        this.setSeekTime(0)
-                       document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
+                       document.dispatchEvent(new CustomEvent("PAUSE", {bubbles: true}))
                     }
                 }
             })
@@ -237,7 +237,7 @@ class Player {
             }
             this.state = this.PAUSED
             this.bufferSource = undefined
-            document.dispatchEvent(new CustomEvent("pause", {bubbles: true}))
+            document.dispatchEvent(new CustomEvent("PAUSE", {bubbles: true}))
         })
 
         return this.playerPromiseChain
@@ -370,7 +370,7 @@ class Player {
 
     setSeekTime(seekTime) {
         this.currentSeekTime = seekTime
-        const event = new CustomEvent("seekTimeUpdate", {
+        const event = new CustomEvent("SEEK_TIME_UPDATE", {
             bubbles: true,
             detail: {
                 currentSeekTime: this.currentSeekTime,
@@ -530,11 +530,11 @@ function activatePlayButton() {
 
     }
 
-    document.addEventListener("pause", (e) => {
+    document.addEventListener("PAUSE", (e) => {
         changePlayButtonUI({ isPlaying: false, buttonStyle: playStyle })
     })
 
-    document.addEventListener("play", (e) => {
+    document.addEventListener("PLAY", (e) => {
         changePlayButtonUI({ isPlaying: true, buttonStyle: pauseStyle })
     })
 }
