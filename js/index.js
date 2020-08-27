@@ -62,8 +62,13 @@ function songElementFn(title, artist, duration) {
                 </div>
             </div>
 
-            <div style="width: 10%; margin-left: 4px; text-align: right; font-size: 0.8em;font-weight: 100;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+            <div style="width: 5%;font-weight: 100;font-size: 0.8em;display: flex; flex-direction: column; justify-content: center; margin: 0px 6px 0 4px; text-align: right;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                 ${duration}
+            </div>
+
+            <div style="height:100%;width: 5%;border-radius: 0 5px 5px 0; background: #fff; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end;">
+                <button class="fas fa-clone fa-md" style="width: 100%; height: 100%; padding: 3px 2px; color: #000; background: none; border: 1px solid #eee;border-radius: 4px;">
+                </button>
             </div>
 
         </div>
@@ -429,9 +434,12 @@ async function getMetadata(file) {
     })
 }
 
-const PlayerSTATE = new PlayerFSM()
+let PlayerSTATE = undefined
 
 async function handleAudioFile(file) {
+
+    PlayerSTATE = PlayerSTATE ? PlayerSTATE : new PlayerFSM()
+    window.PlayerSTATE
 
     const tags = await getMetadata(file)
 
@@ -541,7 +549,6 @@ function activatePlayButton() {
 
 const activateVolumeSlider = () => {
     // Set up initial value
-
     $volume_range.value = document.getElementById('audio-player').volume
     $volume_range.style['background-size'] = `${(($volume_range.value - $volume_range.min) * 100 / ($volume_range.max - $volume_range.min))}% 100%`
 
@@ -616,5 +623,7 @@ $slider.addEventListener('change', (e) => {
 $volume_range.addEventListener('change', (e) => {
     updateSlider(e)
     const volumeValue = Number(e.target.value)
-    PlayerObject.changeVolume(volumeValue)
+    if (PlayerSTATE) {
+        PlayerSTATE.changeVolume(volumeValue)
+    }
 })

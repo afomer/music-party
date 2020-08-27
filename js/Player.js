@@ -31,7 +31,9 @@ class PlayerFSM {
         this.currentSeekTime = 0
         this.duration     = 0
         this.playlist     = []
-        this.chosenSong   = undefined
+        this.destinations = [this.audioContext.destination]
+        this.gains        = [this.audioContext.createGain()]
+        this.currentSong   = undefined
     }
 
     dispatchEventForListeners(event, detail) {
@@ -74,7 +76,10 @@ class PlayerFSM {
                     return true
                 }
 
+                break;
+
             case this.STATES.PLAYING:
+
                 if (transition == this.TRANSITIONS.SEEK) {
                     await this.handleSeek(...args)
                     return true
@@ -91,6 +96,8 @@ class PlayerFSM {
                     return true
                 }
 
+                break;
+
             case this.STATES.PAUSED:
                 if (transition == this.TRANSITIONS.PLAY) {
                     await this.handlePlay(...args)
@@ -102,6 +109,8 @@ class PlayerFSM {
                     await this.handleSeek(...args)
                     return true
                 }
+
+                break;
         }
 
         console.error('Transition Not Possible', `[State: ${this.state}] [Transition: ${transition}]`)
@@ -109,6 +118,14 @@ class PlayerFSM {
     }
 
     async play(idx) {
+
+        // If a song is playing:
+        // 1- Stop the current song
+        // 2- Then play the new song (even if it's the same song)
+        if (idx != undefined && this.state == this.STATES.PLAYING) {
+            await this.transitionState(this.TRANSITIONS.STOP)
+        }
+
         return this.transitionState(this.TRANSITIONS.PLAY, idx)
     }
 
@@ -149,20 +166,60 @@ class PlayerFSM {
         }, intervalAmountInms)
     }
 
+    addDestinationNode(destinationNode, bufferSource) {
+        const nodeIndex = this.destinations.findIndex(dest => dest == destinationNode)
+        const foundNode = nodeIndex != -1
+
+        try {
+            const node = foundNode ? this.destinations[nodeIndex] : destinationNode
+            const gainNode = foundNode && this.gains.length < nodeIndex ? this.gains[nodeIndex] : this.audioContext.createGain()
+
+            // The following line should be refactored
+            gainNode.gain.setValueAtTime(Number($volume_range.value), this.audioContext.currentTime)
+            gainNode.connect(node)
+            bufferSource.connect(gainNode)
+
+            // if it's a newly created gain, add it to the gains array
+            if (!foundNode || this.gains.length >= nodeIndex) {
+                this.gains.push(gainNode)
+            }
+
+            return true
+        } catch(error) {
+            console.error(error)
+            return false
+        }
+    }
+
+    handleDestinations(bufferSource, destinations) {
+        for (const dest of destinations) {
+            this.addDestinationNode(dest, bufferSource)
+        }
+    }
+
+    changeVolume(volume) {
+        for (let gainNode of this.gains) {
+            gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime)
+        }
+    }
+
     async handlePlay(idx=undefined) {
 
+        // Valid song ID from the playlist
         if (idx != undefined && this.playlist[idx]) {
-            this.chosenSong = this.playlist[idx]
+            this.currentSong = this.playlist[idx]
         }
 
         this.bufferSource = this.audioContext.createBufferSource()
-        this.bufferSource.connect(this.audioContext.destination) // temporary for testing
-        const audioArrayBuffer  = await this.chosenSong.getArrayBufferFromFile()
+
+        this.handleDestinations(this.bufferSource, this.destinations)
+
+        const audioArrayBuffer  = await this.currentSong.getArrayBufferFromFile()
 
         return this.audioContext.decodeAudioData(audioArrayBuffer)
                .then((audioBuffer) => {
                     this.bufferSource.buffer = audioBuffer
-                    this.duration = this.chosenSong.getInfo().duration * 1000
+                    this.duration = this.currentSong.getInfo().duration * 1000
                     this.bufferSource.start(0, Math.floor(this.currentSeekTime/1000))
                     this.setIntervalTimer()
                 })
@@ -173,7 +230,7 @@ class PlayerFSM {
         if (this.bufferSource) {
             this.bufferSource.stop(0)
         }
-        this.chosenSong = undefined
+        this.currentSong = undefined
         clearInterval(this.currentSeekTimeInterval)
     }
 
