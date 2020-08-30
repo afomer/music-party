@@ -586,6 +586,7 @@ $room_create = document.getElementById('room-create')
 
 const observer = new MutationObserver(() => {
     console.log('state')
+    alert('CLICKED')
     const $room = document.getElementById('room-create')
     if ($room.getAttribute("state") == "connected"){
         $room.className = 'button-style-leave'

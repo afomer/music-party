@@ -11,8 +11,8 @@
         <title>Music Party 🎉</title>
     </head>
     <body style="display: flex; flex-direction: column; height: 100vh; width: 100vw; margin: 0; color: #fff;">
-        <div style="display: flex; flex-direction: row; height: 100%; width: 100%;  overflow: hidden;">
-            <div style="width: 20%; display: flex; flex-direction: column; flex: 2; color: #fff; background-color: var(--primary-bg-color);font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;padding: 5px 18px;" class="listeners">
+        <div style="display: flex; flex-direction: column; height: 100%; width: 100%;  overflow: hidden;">
+            <div style="color: #fff; background-color: var(--primary-bg-color);font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;padding: 5px 18px;" class="listeners">
                 <div id="party-title" style="font-family: inherit; font-size: 2em; margin-bottom: 10px; padding-left: 1px;">
                     Music Party
                 </div>
@@ -32,7 +32,7 @@
 
                 <hr style="width: 100%; border-top: 1px solid #2f2f2f; margin: 25px 0;">
 
-                <div style="display: flex; flex: 1; flex-direction: column; overflow-y: scroll;">
+                <div style="display: flex; flex: 1; flex-direction: row; overflow-y: scroll;">
                     <div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 0 0 15px 0;">
                         <div style="width: 25%">
                             <img style="width: 100%; height: 100%;" src='https://avataaars.io/?avatarStyle=Circle&topType=WinterHat1&accessoriesType=Kurt&hatColor=Pink&facialHairType=Blank&clotheType=Overall&clotheColor=Blue01&eyeType=Dizzy&eyebrowType=Default&mouthType=Tongue&skinColor=Light'/>
@@ -55,22 +55,21 @@
 
                 </div>
 
-
             </div>
 
-            <div style="width: 80%; flex: 8; display: flex; flex-direction: column; align-items: center; overflow-y: scroll; background-color: var(--secondary-bg-color);padding: 5px;">
+            <div style="display: flex; flex-direction: column; align-items: center; overflow-y: scroll; background-color: var(--secondary-bg-color);padding: 5px;">
 
-                <button id="add-song" style="display: flex; justify-content: space-between; align-items: center; font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif; font-size: 20px;width: 40%; color: #fff;border:none;border-radius: 5px;margin-top: 10px; padding: 9px 13px;">
+                <button id="add-song" style="display: flex; justify-content: space-between; align-items: center; font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif; font-size: 20px;color: #fff;border:none;border-radius: 5px;margin-top: 10px; padding: 9px 13px;">
                     Add a Song to the queue
                     <li class="fas fa-plus fa-md"></li>
                 </button>
 
-                <div style="width: 100%; display: flex; flex-direction: row; margin: 25px 0 0;">
-                    <div id="playlist" style="width: 60%; overflow-y: scroll; padding: 0 5px;">
+                <div style="width: 100%; display: flex; flex-direction: column; margin: 25px 0 0;">
+                    <div id="playlist" style="overflow-y: scroll; padding: 0 5px;">
                         <h4>Playlist</h4>
                         <hr style="width: 100%; border-top: 1px solid #2f2f2f;">
                     </div>
-                    <div id="queue" style="width: 40%; overflow-y: scroll; padding: 0 5px;">
+                    <div id="queue" style="overflow-y: scroll; padding: 0 5px;">
                         <h4>Queue</h4>
                         <hr style="width: 100%; border-top: 1px solid #2f2f2f;">
                     </div>
@@ -82,14 +81,14 @@
 
         <footer class="player">
 
-            <div style="width: 30%; display: flex; align-items: center;">
+            <div style="margin: auto; width: 100%; display: flex; align-items: center;">
                 <div style="height: 60px; width: 60px; margin: 0 10px">
                     <img id="song-img"
                         style="border-radius: 50%; height: 100%; width: 100%;"
                         src="https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg"
                     />
                 </div>
-                <div style="width: 55%; display: flex; flex-direction: column; align-items: flex-start;">
+                <div style="width: 80%; display: flex; flex-direction: column; align-items: flex-start;">
                     <div style="overflow: hidden; width: 100%;">
                         <p id="song-title" style="font-size: 1.2em; color: #fff; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
                             Land of the Free
@@ -104,20 +103,7 @@
 
             </div>
 
-            <div style="width: 40%; height: 100%; display: flex; flex-direction: column;">
-                <div style="display: flex;">
-                    <button id="song-skip-backward" class="btn">
-                        <li class="fas fa-step-backward fa-2x"></li>
-                    </button>
-
-                    <button id="play-button" playing="true" class="btn">
-                        <i class="fas fa-play fa-3x"></i>
-                    </button>
-
-                    <button id="song-skip-forward" class="btn">
-                        <li class="fas fa-step-forward fa-2x"></li>
-                    </button>
-                </div>
+            <div style="width: 70%; height: 100%; display: flex; flex-direction: column;">
 
                 <div style="display: flex; align-items: center; padding-top: 15px; color: #fff; ">
                     <audio autoplay preload="none" id="audio-player"></audio>
@@ -126,13 +112,6 @@
                     <time style="width: 50px" class="time_remaining" datetime="PT2M30S">-2:30</time>
                 </div>
 
-            </div>
-
-            <div style="width: 30%; display: flex; justify-content: flex-end;">
-                <div style="display: flex; align-items: center;width: 50%">
-                    <input id="volume-range" type="range" min="0.0" max="1.0" step="0.01" value="0.5"/>
-                    <li style="color: #fff; padding: 10px" class="fas fa-volume-up fa-lg"></li>
-                </div>
             </div>
 
         </footer>
