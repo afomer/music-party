@@ -203,6 +203,13 @@ class PlayerFSM {
         }
     }
 
+    addRemoteDestination() {
+        const remoteNode = this.audioContext.createMediaStreamDestination()
+        this.destinations.push(remoteNode)
+        this.gains.push(this.audioContext.createGain())
+        return remoteNode
+    }
+
     async handlePlay(idx=undefined) {
 
         // Valid song ID from the playlist

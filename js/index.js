@@ -1,6 +1,7 @@
 let remoteStream = null
 let isPlayerCreated = false
 let PlayerObject    = null
+let PlayerSTATE = undefined
 
 const $slider = document.getElementById('slider')
 const $volume_range = document.getElementById('volume-range')
@@ -46,11 +47,10 @@ document.addEventListener("SEEK_TIME_UPDATE", (event) => {
 function songElementFn(title, artist, duration) {
     return (`
     <div class="song-card">
-        <div style="border-radius: 50%;width: 65px; height: 65px; margin-right: 10px; overflow: hidden;">
+        <div style="align-self: center; border-radius: 50%;width: 65px; height: 65px; margin-right: 10px; overflow: hidden;">
             <img style="height: 100%; width: 100%;"/>
         </div>
-
-        <div style="display: flex; flex: 1; justify-content: space-between; align-items: center; overflow: hidden">
+        <div style="padding: 10px 0px;display: flex; flex: 1; justify-content: space-between; align-items: center; overflow: hidden">
 
             <div style="width: 90%">
                 <div style="font-size: 1.2em; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
@@ -62,17 +62,15 @@ function songElementFn(title, artist, duration) {
                 </div>
             </div>
 
-            <div style="width: 5%;font-weight: 100;font-size: 0.8em;display: flex; flex-direction: column; justify-content: center; margin: 0px 6px 0 4px; text-align: right;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
+            <div style="width: 10%;font-weight: 100;font-size: 0.8em;display: flex; flex-direction: column; justify-content: center; margin: 0px 6px 0 4px; text-align: right;font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;">
                 ${duration}
             </div>
 
-            <div style="height:100%;width: 5%;border-radius: 0 5px 5px 0; background: #fff; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end;">
-                <button class="fas fa-clone fa-md" style="width: 100%; height: 100%; padding: 3px 2px; color: #000; background: none; border: 1px solid #eee;border-radius: 4px;">
-                </button>
-            </div>
-
         </div>
-
+        <div class="queue-btn-container">
+            <button class="fas fa-clone fa-md queue-btn">
+            </button>
+        </div>
     </div>`)
 }
 
@@ -434,7 +432,6 @@ async function getMetadata(file) {
     })
 }
 
-let PlayerSTATE = undefined
 
 async function handleAudioFile(file) {
 
@@ -570,11 +567,17 @@ const activateVolumeSlider = () => {
 activateAddSongButton()
 activatePlayButton()
 activateVolumeSlider()
-document.getElementById("room-input-form").onsubmit = joinAhost
-document.getElementById('room-create').onclick = () => {
+document.getElementById("room-input-form").onsubmit = (e) => {
+    e.preventDefault()
+    joinAhost()
+    return false;
+}
+document.getElementById('room-create').onclick = (e) => {
     if ( createRoom() ) {
         document.getElementById("party-title").textContent = `You're the host of Party: ${ID}`
     }
+    e.preventDefault()
+    return false;
 }
 const unconnected_TEXT = "Start a Party 🎉"
 const connected_TEXT = "Leave the Party"

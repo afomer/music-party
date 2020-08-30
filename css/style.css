@@ -135,11 +135,12 @@ input[type="range"]::-webkit-slider-thumb {
 
 .song-card {
     display: flex;
+    height: 80px;
     width: 100%;
     overflow: hidden;
     cursor: pointer;
-    padding: 10px 10px;
-    margin: 4px 0;
+    margin: 20px 0 20px 0px;
+    padding-left: 5px;
     font-family: "Gill Sans, Seravek, Trebuchet MS, sans-serif";
     border-radius: 5px;
 }
@@ -157,4 +158,35 @@ input[type="range"]::-webkit-slider-thumb {
 #play-button:hover, #song-skip-backward:hover, #song-skip-forward:hover {
     cursor: pointer;
     opacity: .5;
+}
+
+.queue-btn-container {
+    display: none;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    width: 5%;
+    border-radius: 0 5px 5px 0;
+    background: #fff;
+
+}
+
+.queue-btn {
+    width: 100%;
+    height: 100%;
+    padding: 3px 2px;
+    color: #000;
+    background: none;
+    border: none;
+    border-radius: 4px;
+}
+
+@keyframes widen {
+    from {
+        width: 0%
+    }
+
+    to {
+        width: 100%
+    }
 }

@@ -20,7 +20,7 @@ let ignoreOffer = false
 // at every point in time you are either one of them
 // the default is listener
 /* Creating a party */
-const socket = io("http://localhost:3000")
+const socket = io("http://192.168.1.11:3000")
 let   ID     = null
 
 const IDLE = "IDLE"
@@ -132,18 +132,6 @@ socket.on('message', async ({ from, data }) => {
 
 const addAudioToStream = () => {
 
-    const audioCtx = new AudioContext()
-    const source = audioCtx.createMediaElementSource($audio_player)
-    const remoteStreamDestination = audioCtx.createMediaStreamDestination();
-    const speakersGain = audioCtx.createGain()
-    const remoteGain   = audioCtx.createGain()
-
-    source.connect(speakersGain)
-    source.connect(remoteGain)
-
-    speakersGain.connect(audioCtx.destination)
-    remoteGain.connect(remoteStreamDestination)
-
     switch(CURRENT_STATE) {
         case STATES.HOST:
             for (const key in listeners) {
@@ -161,7 +149,8 @@ const addAudioToStream = () => {
 }
 
 // Add Listners as they come
-const createRoom = () => {
+function createRoom() {
+            console.log(PlayerSTATE)
 
     try {
         changeStateTo(HOST)
@@ -169,8 +158,9 @@ const createRoom = () => {
         socket.on('listener', async ({ from, description }) => {
             console.log('Got message from', from, description)
             const peerConnection = new RTCPeerConnection(config)
-
             // Link tracks to this guy
+            const remoteDestinationNode = PlayerSTATE.addRemoteDestination()
+            peerConnection.addStream(remoteDestinationNode.stream)
             console.log(remoteStream)
 
             // Take care of ICE candidates
