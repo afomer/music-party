@@ -255,15 +255,13 @@ const joinAhost = () => {
     remotePeerConnection.ontrack = ({ track, streams }) => {
         console.log('onTrack: ', streams[0].active)
 
-        $audio_player.srcObject = streams[0]
         document.getElementById('song-img').ontouchstart = () => {
-            $audio_player.play()
+            const source = audioContext.createMediaStreamSource(streams[0]);
+            source.connect(audioContext.destination)
+            source.start()
             alert('ok')
         }
-        //const source = audioContext.createBufferSource();
-        //source.connect(audioContext.destination)
-        //source.buffer = streams[0]
-        //source.start()
+
 
     }
 
