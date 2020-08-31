@@ -1,29 +1,30 @@
+var AudioContext = AudioContext || window.AudioContext || window.webkitAudioContext
 
 class PlayerFSM {
 
-    /* STATES and Transitions for Finite State Machine */
-    STATES = {
-        IDLE: "IDLE",
-        PLAYING: "PLAYING",
-        PAUSED: "STOPPED"
-    }
-
-    TRANSITIONS = {
-        PLAY: "PLAY",
-        PAUSE: "PAUSE",
-        STOP: "STOP",
-        SEEK: "SEEK"
-    }
-    /* *** */
-
-    // The events For event Listeners
-    EVENT_TYPES = {
-        PLAY: "PLAY",
-        PAUSE: "PAUSE",
-        SEEK_TIME_UPDATE: "SEEK_TIME_UPDATE"
-    }
-
     constructor() {
+        /* STATES and Transitions for Finite State Machine */
+        this.STATES = {
+            IDLE: "IDLE",
+            PLAYING: "PLAYING",
+            PAUSED: "STOPPED"
+        }
+
+        this.TRANSITIONS = {
+            PLAY: "PLAY",
+            PAUSE: "PAUSE",
+            STOP: "STOP",
+            SEEK: "SEEK"
+        }
+        /* *** */
+
+        // The events For event Listeners
+        this.EVENT_TYPES = {
+            PLAY: "PLAY",
+            PAUSE: "PAUSE",
+            SEEK_TIME_UPDATE: "SEEK_TIME_UPDATE"
+        }
+
         this.audioContext = new AudioContext()
         this.state = this.STATES.IDLE
         this.bufferSource = undefined

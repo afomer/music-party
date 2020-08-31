@@ -12,8 +12,9 @@ The difference is that hosts store a "listeners array"
 const config    = {}
 let   listeners = null
 let remotePeerConnection = null
-let makingOffer = false
-let ignoreOffer = false
+let makingOffer  = false
+let ignoreOffer  = false
+let audioContext = null
 
 /* STATES */
 // There are two main states maintained, listener and host
@@ -112,8 +113,19 @@ socket.on('message', async ({ from, data }) => {
         // Refer to (1) to handle accepting offers
         // In case, you reached here and it's an offer. You're the smaller peer. Accept it, send your answer
         if (data.description.type == 'offer') {
-            await remotePeer.setLocalDescription()
-            socket.emit('message', { to: from, data: { description: remotePeer.localDescription } })
+            let answer = remotePeer.createAnswer()
+
+            try {
+                await remotePeer.setLocalDescription(answer)
+            } catch (err) {
+                console.log(remotePeer.connectionState)
+                const ret = await remotePeer.setRemoteDescription(data.description)
+                console.log('---->', ret, remotePeer.connectionState, data.description)
+                answer = await remotePeer.createAnswer(data.description)
+                await remotePeer.setLocalDescription(answer).catch(console.error)
+            }
+
+            socket.emit('message', { to: from, data: { description: answer } })
         }
 
     } else if (data.candidate) {
@@ -209,6 +221,8 @@ function createRoom() {
 // Join a host
 const joinAhost = () => {
 
+    audioContext = audioContext || new window.AudioContext()
+
     changeStateTo(LISTENER)
 
     const partyID = document.getElementById('room-input').value
@@ -240,12 +254,17 @@ const joinAhost = () => {
 
     remotePeerConnection.ontrack = ({ track, streams }) => {
         console.log('onTrack: ', streams[0].active)
-        track.onunmute = () => {
-            console.log('track & streams: ', track, streams[0], streams[0].active)
-            if (!$audio_player.srcObject) {
-                $audio_player.srcObject = streams[0]
-            }
+
+        $audio_player.srcObject = streams[0]
+        document.getElementById('song-img').ontouchstart = () => {
+            $audio_player.play()
+            alert('ok')
         }
+        //const source = audioContext.createBufferSource();
+        //source.connect(audioContext.destination)
+        //source.buffer = streams[0]
+        //source.start()
+
     }
 
     makingOffer = true

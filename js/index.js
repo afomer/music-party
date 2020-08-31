@@ -130,12 +130,13 @@ class Song {
 
 class Player {
 
-    //Player STATES
-    PAUSED  = "PAUSED"
-    PLAYING = "PLAYING"
-    IDLE    = "IDLE"
 
     constructor() {
+        //Player STATES
+        this.PAUSED  = "PAUSED"
+        this.PLAYING = "PLAYING"
+        this.IDLE    = "IDLE"
+
         this.state = this.IDLE
         this.playerPromiseChain = Promise.resolve()
         this.audioCtx = new AudioContext()
@@ -505,6 +506,11 @@ const pauseStyle = 'fas fa-pause fa-3x'
 const playStyle  = 'fas fa-play fa-3x'
 
 const changePlayButtonUI = ({ isPlaying, buttonStyle }) => {
+
+    if (!document.getElementById('play-button')) {
+        return;
+    }
+
     document.getElementById('play-button').setAttribute('playing', isPlaying)
     document.getElementById('play-button').firstElementChild.setAttribute('class', buttonStyle)
 }
@@ -523,16 +529,18 @@ function activatePlayButton() {
 
     let playPromise = undefined
 
-    document.getElementById('play-button').onclick = (e) => {
-        const isPlaying  = document.getElementById('play-button').getAttribute('playing') || false
-        const togglePlayButton = isPlaying == "true" ? pauseAudio : playAudio
+    if (document.getElementById('play-button')) {
+        document.getElementById('play-button').onclick = (e) => {
+            const isPlaying  = document.getElementById('play-button').getAttribute('playing') || false
+            const togglePlayButton = isPlaying == "true" ? pauseAudio : playAudio
 
-        if (playPromise !== undefined) {
-            playPromise = playPromise.then(togglePlayButton)
-        } else {
-            playPromise = togglePlayButton()
+            if (playPromise !== undefined) {
+                playPromise = playPromise.then(togglePlayButton)
+            } else {
+                playPromise = togglePlayButton()
+            }
+
         }
-
     }
 
     document.addEventListener("PAUSE", (e) => {
@@ -586,7 +594,7 @@ $room_create = document.getElementById('room-create')
 
 const observer = new MutationObserver(() => {
     console.log('state')
-    alert('CLICKED')
+
     const $room = document.getElementById('room-create')
     if ($room.getAttribute("state") == "connected"){
         $room.className = 'button-style-leave'
