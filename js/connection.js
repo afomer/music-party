@@ -262,7 +262,6 @@ const joinAhost = () => {
             alert('ok')
         }
 
-
     }
 
     makingOffer = true

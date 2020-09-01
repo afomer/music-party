@@ -3,6 +3,7 @@
     --primary-bg-color: #212121;
     --primary-color: #4C52B2;
     --primary-button-color: #B0B7BE;
+    --separator: #2f2f2f;
 }
 
 p {
@@ -54,7 +55,7 @@ input[type="range"]::-webkit-slider-thumb {
     outline: none;
     height: 100%;
     width: 100%;
-    padding: 10px 50px 10px 20px;
+    padding: 10px 20px;
     border-radius: 25px;
     text-decoration: none;
     border: none;
@@ -88,7 +89,7 @@ input[type="range"]::-webkit-slider-thumb {
 @media only screen and (min-width: 768px) {
     .player {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         justify-content: space-between;
         color: #000;
