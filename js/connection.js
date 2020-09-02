@@ -72,6 +72,12 @@ socket.on("disconnected", ({ id }) => {
 })
 
 
+async function fromLocalOfferToBackStable(peer) {
+    try {
+        await peer.setLocalDescription(await peer.createAnswer())
+    } catch (err) {}
+}
+
 /* (1) Handling Offer/Answer restart, to avoid glare, is as follows:
    The peer with the smaller ID answers the offer
 */
@@ -105,27 +111,56 @@ socket.on('message', async ({ from, data }) => {
         }
 
         // Otherwise, it's either an SDP anwer or you're the "smaller" peer,
-        // so, you accept the offer, and send your SDP anwer
+        // so, you accept the offer, and send your SDP answer
 
-        // If it's an SDP answer, or you're the smaller peer. In both cases you will setRemote
-        await remotePeer.setRemoteDescription(data.description)
+
 
         // Refer to (1) to handle accepting offers
         // In case, you reached here and it's an offer. You're the smaller peer. Accept it, send your answer
-        if (data.description.type == 'offer') {
+        /*if (data.description.type == 'offer') {
+
             let answer = remotePeer.createAnswer()
+
+            console.log(remotePeer.connectionState)
 
             try {
                 await remotePeer.setLocalDescription(answer)
             } catch (err) {
-                console.log(remotePeer.connectionState)
                 const ret = await remotePeer.setRemoteDescription(data.description)
-                console.log('---->', ret, remotePeer.connectionState, data.description)
                 answer = await remotePeer.createAnswer(data.description)
                 await remotePeer.setLocalDescription(answer).catch(console.error)
             }
 
             socket.emit('message', { to: from, data: { description: answer } })
+        }
+        */
+
+        // If it's an SDP answer, to a previous offer, accept it
+        if (data.description.type == "answer") {
+            await remotePeer.setRemoteDescription(data.description)
+        }
+        else if (data.description.type == 'offer') {
+            // It's an offer, and you're stable or you're the smaller peer
+            // (in which you will always accept and drop your current unstable state).
+
+            // As the smaller peer: if you sent and offer and recieved offer.
+            // Disregard your offer, and go back to "new" state
+            console.log(remotePeer.signalingState, '<<<<----')
+
+            if (remotePeer.signalingState == "have-local-offer") {
+                // reset state to new
+                await fromLocalOfferToBackStable()
+            }
+
+            // new => have-local-answer
+            await remotePeer.setRemoteDescription(data.description)
+
+            // have-local-answer => stable (connected)
+            const answer = await remotePeer.createAnswer(data.description)
+            await remotePeer.setLocalDescription(answer)
+
+            socket.emit('message', { to: from, data: { description: answer } })
+
         }
 
     } else if (data.candidate) {
@@ -219,9 +254,7 @@ function createRoom() {
 
 
 // Join a host
-const joinAhost = () => {
-
-    audioContext = audioContext || new window.AudioContext()
+const joinAhost = async () => {
 
     changeStateTo(LISTENER)
 
@@ -231,8 +264,10 @@ const joinAhost = () => {
     window.pc = remotePeerConnection
     remotePeerConnection.onsignalingstatechange = (e) => {
         if (remotePeerConnection.signalingState == 'stable') {
+            //TODO This should be Controller with no View
             document.getElementById("room-create").setAttribute("connectionID", partyID)
             document.getElementById("room-create").setAttribute("state", "connected")
+            $room.setAttribute("state", "connected")
         }
         console.log('signalingState:', remotePeerConnection.signalingState, '- ConnectionState:', remotePeerConnection.connectionState)
     }
@@ -255,26 +290,17 @@ const joinAhost = () => {
     remotePeerConnection.ontrack = ({ track, streams }) => {
         console.log('onTrack: ', streams[0].active)
 
-        document.getElementById('song-img').ontouchstart = () => {
-            const source = audioContext.createMediaStreamSource(streams[0]);
-            source.connect(audioContext.destination)
-            source.start()
-            alert('ok')
-        }
+        const source = PlayerSTATE.audioContext.createMediaStreamSource(streams[0]);
+        source.connect(PlayerSTATE.audioContext.destination)
+        source.start()
 
     }
 
     makingOffer = true
-    remotePeerConnection.createOffer()
-    .then((offer) => {
-        remotePeerConnection.setLocalDescription(offer)
-        return offer;
-    })
-    .then(offer => {
-        socket.emit('join', { to: partyID, data: { description: offer } })
-        makingOffer = false
-    })
-
+    const offer = await remotePeerConnection.createOffer()
+    await remotePeerConnection.setLocalDescription(offer)
+    socket.emit('join', { to: partyID, data: { description: offer } })
+    makingOffer = false
 
     // prevents the page from refreshing
     return false;

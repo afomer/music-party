@@ -3,6 +3,10 @@ let isPlayerCreated = false
 let PlayerObject    = null
 let PlayerSTATE = undefined
 
+document.addEventListener("touchstart", () => {
+    PlayerSTATE = new PlayerFSM()
+})
+
 const $slider = document.getElementById('slider')
 const $volume_range = document.getElementById('volume-range')
 const $audio_player = document.getElementById('audio-player')
@@ -436,7 +440,6 @@ async function getMetadata(file) {
 
 async function handleAudioFile(file) {
 
-    PlayerSTATE = PlayerSTATE ? PlayerSTATE : new PlayerFSM()
     window.PlayerSTATE
 
     const tags = await getMetadata(file)
@@ -587,15 +590,14 @@ document.getElementById('room-create').onclick = (e) => {
     e.preventDefault()
     return false;
 }
-const unconnected_TEXT = "Start a Party 🎉"
+const unconnected_TEXT = "Join a Party 🎉"
 const connected_TEXT = "Leave the Party"
 
-$room_create = document.getElementById('room-create')
+const $room = document.getElementById('room-join')
 
 const observer = new MutationObserver(() => {
     console.log('state')
 
-    const $room = document.getElementById('room-create')
     if ($room.getAttribute("state") == "connected"){
         $room.className = 'button-style-leave'
         $room.textContent = connected_TEXT

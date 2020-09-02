@@ -68,7 +68,6 @@ input[type="range"]::-webkit-slider-thumb {
     padding: 10px 20px 10px 20px;
     border-radius: 25px;
     border: none;
-    border: none;
     font-weight: 600;
     color: #fff;
 }
