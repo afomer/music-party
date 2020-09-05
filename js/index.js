@@ -4,7 +4,12 @@ let PlayerObject    = null
 let PlayerSTATE = undefined
 
 document.addEventListener("touchstart", () => {
+    // Create a player object once you get a touch
     PlayerSTATE = new PlayerFSM()
+})
+
+document.addEventListener("click", () => {
+    PlayerSTATE = PlayerSTATE || new PlayerFSM()
 })
 
 const $slider = document.getElementById('slider')
@@ -580,11 +585,11 @@ activatePlayButton()
 activateVolumeSlider()
 document.getElementById("room-input-form").onsubmit = (e) => {
     e.preventDefault()
-    joinAhost()
+    CONNECTION.joinAhost()
     return false;
 }
 document.getElementById('room-create').onclick = (e) => {
-    if ( createRoom() ) {
+    if ( CONNECTION.createRoom() ) {
         document.getElementById("party-title").textContent = `You're the host of Party: ${ID}`
     }
     e.preventDefault()
@@ -607,7 +612,7 @@ const observer = new MutationObserver(() => {
     }
 })
 
-observer.observe($room_create, {
+observer.observe($room, {
     attributes: true,
     attributeFilter: ['state'],
     characterData: false
