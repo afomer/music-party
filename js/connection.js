@@ -8,337 +8,310 @@ There are two main ways to connect:
 The difference is that hosts store a "listeners array"
 
 */
+/* Global Variables */
+const config    = {}
+let   listeners = null
+let remotePeerConnection = null
+let makingOffer  = false
+let ignoreOffer  = false
+let audioContext = null
 
-const SOCKET_IO_HOST = "http://192.168.1.11:3000"
+/* STATES */
+// There are two main states maintained, listener and host
+// at every point in time you are either one of them
+// the default is listener
+/* Creating a party */
+const socket = io("http://192.168.1.11:3000")
+let   ID     = null
+
+const IDLE = "IDLE"
+const LISTENER = "LISTENER"
+const HOST = "HOST"
+const STATES = Object.freeze({ IDLE: 0, LISTENER: 1, HOST: 2 })
 
 
-class Connection {
+let CURRENT_STATE = STATES.IDLE
+const changeStateTo = (FromSTATE, newSTATE) => {
+    CURRENT_STATE = STATES[FromSTATE]
 
-    /* Global Variables */
-    constructor() {
-        /* STATES */
-        // There are two main states maintained, listener and host
-        // at every point in time you are either one of them
-        // the default is listener
-        /* Creating a party */
-        this.socket = io(SOCKET_IO_HOST)
-        this.ID     = null
+    console.log(CURRENT_STATE, newSTATE)
 
-        this.STATES = {
-            IDLE: "IDLE",
-            LISTENER: "LISTENER",
-            HOST: "HOST"
-        }
+    switch(CURRENT_STATE) {
+        case STATES.LISTENER:
+            remotePeerConnection = null
+            break;
 
-        this.CURRENT_STATE = this.STATES.IDLE
-        this.config    = {}
-        this.listeners = {}
-        this.remotePeerConnection = null
-        this.makingOffer  = false
-        this.ignoreOffer  = false
-        this.audioContext = null
-    }
+        case STATES.HOST:
 
-    changeStateTo(newSTATE) {
-
-        switch(this.CURRENT_STATE) {
-            case this.STATES.LISTENER:
-                remotePeerConnection = null
-                break;
-
-            case this.STATES.HOST:
-
-                for (const i in listeners) {
-                    listeners[i].pc.close()
-                }
-
-                this.socket.off("listener")
-                listeners = {}
-                break;
-
-            case this.STATES.IDLE:
-                this.socket.off("listener")
-                listeners = {}
-                remotePeerConnection = null
-                break;
-        }
-
-        switch(newSTATE) {
-            case this.STATES.LISTENER:
-                remotePeerConnection = null
-                break;
-
-            case this.STATES.HOST:
-                for (const i in listeners) {
-                    listeners[i].pc.close()
-                }
-
-                this.socket.off("listener")
-                listeners = {}
-                break;
-
-            case this.STATES.IDLE:
-                this.socket.off("listener")
-                listeners = {}
-                remotePeerConnection = null
-                break;
-        }
-
-    }
-
-    // Getting an ID from the server
-    init() {
-        this.socket.on('init', ({ id }) => this.ID = id)
-        this.socket.on("disconnected", ({ id }) => {
-            switch(CURRENT_STATE) {
-                case STATES.LISTENER:
-                    remotePeerConnection = null
-                    break;
-
-                case STATES.HOST:
-                    listeners[id] = null
-
-                default:
-                    break;
-            }
-        })
-
-    /* (1) Handling Offer/Answer restart, to avoid glare, is as follows:
-    The peer with the smaller ID answers the offer
-    */
-
-    // .on('message') assumes that the other party have a host or listener relationship
-    // with the other peer, and using out-of-band communication to reach them
-    // for either: connection establishment or ICE restart
-
-    this.socket.on('message', async ({ from, data }) => {
-
-            console.log('from: ', from, 'recieved: ', data)
-
-            const remotePeer = CURRENT_STATE == STATES.HOST ? listeners[from] : remotePeerConnection
-
-            // If the remote peer is not recognized, ignore the message
-            if (remotePeer == null) {
-                return;
+            for (const i in listeners) {
+                listeners[i].pc.close()
             }
 
-            if (data.description) {
+            socket.off("listener")
+            listeners = {}
+            break;
 
-                // Offer collision, when you're making an offer and you recieve an Offer or made/accepted an offer.
-                const offerCollision = data.description.type == "offer" && (makingOffer || remotePeer.signalingState != "stable")
-
-                // ignore offers according to (1)
-                // namely, ignore the offer, if there's an offer collision, and
-                // you have a bigger ID (you're the "bigger" peer, and don't answer offers when you made an offer already)
-                ignoreOffer = offerCollision && (ID > from)
-                if (ignoreOffer) {
-                    return;
-                }
-
-                // Otherwise, it's either an SDP anwer or you're the "smaller" peer,
-                // so, you accept the offer, and send your SDP answer
-
-
-
-                // Refer to (1) to handle accepting offers
-                // In case, you reached here and it's an offer. You're the smaller peer. Accept it, send your answer
-                /*if (data.description.type == 'offer') {
-
-                    let answer = remotePeer.createAnswer()
-
-                    console.log(remotePeer.connectionState)
-
-                    try {
-                        await remotePeer.setLocalDescription(answer)
-                    } catch (err) {
-                        const ret = await remotePeer.setRemoteDescription(data.description)
-                        answer = await remotePeer.createAnswer(data.description)
-                        await remotePeer.setLocalDescription(answer).catch(console.error)
-                    }
-
-                    socket.emit('message', { to: from, data: { description: answer } })
-                }
-                */
-
-                // If it's an SDP answer, to a previous offer, accept it
-                if (data.description.type == "answer") {
-                    await remotePeer.setRemoteDescription(data.description)
-                }
-                else if (data.description.type == 'offer') {
-                    // It's an offer, and you're stable or you're the smaller peer
-                    // (in which you will always accept and drop your current unstable state).
-
-                    // As the smaller peer: if you sent and offer and recieved offer.
-                    // Disregard your offer, and go back to "new" state
-                    console.log(remotePeer.signalingState, '<<<<----')
-
-                    if (remotePeer.signalingState == "have-local-offer") {
-                        // reset state to new
-                        await fromLocalOfferToBackStable()
-                    }
-
-                    // new => have-local-answer
-                    await remotePeer.setRemoteDescription(data.description)
-
-                    // have-local-answer => stable (connected)
-                    const answer = await remotePeer.createAnswer(data.description)
-                    await remotePeer.setLocalDescription(answer)
-
-                    socket.emit('message', { to: from, data: { description: answer } })
-
-                }
-
-            } else if (data.candidate) {
-
-                try {
-                    remotePeer.addIceCandidate(data.candidate)
-                } catch (error) {
-                    if (!makingOffer) {
-                        throw error
-                    }
-                }
-
-            }
-
-        })
-    }
-
-
-    async fromLocalOfferToBackStable(peer) {
-        try {
-            await peer.setLocalDescription(await peer.createAnswer())
-        } catch (err) {}
-    }
-
-
-
-    addAudioToStream = () => {
-
-        switch(CURRENT_STATE) {
-            case STATES.HOST:
-                for (const key in listeners) {
-                    console.log(remoteStreamDestination)
-                    listeners[key].addStream(remoteStreamDestination.stream)
-                }
-                break;
-            case STATES.LISTENER:
-                break;
-            default:
-                break;
-        }
-
-    }
-
-    // Add Listners as they come
-    createRoom() {
-
-        try {
-            this.changeStateTo(HOST)
-            console.log('CREATE A ROOM')
-            this.socket.on('listener', async ({ from, description }) => {
-                console.log('Got message from', from, description)
-                const peerConnection = new RTCPeerConnection(config)
-                // Link tracks to this guy
-                const remoteDestinationNode = PlayerSTATE.addRemoteDestination()
-                peerConnection.addStream(remoteDestinationNode.stream)
-                console.log(remoteStream)
-
-                // Take care of ICE candidates
-                peerConnection.onicecandidate = (event) => {
-                    console.log('ICE: ', event)
-                    if (event.candidate) {
-                        this.socket.emit('message', { to: from, data: { candidate: event.candidate } })
-                    }
-                }
-
-                peerConnection.onsignalingstatechange = (e) => {
-                    console.log('signalingState:', peerConnection.signalingState, 'connectionState: ', peerConnection.connectionState, '- from:', from)
-                }
-
-                // on re-negotiations create offer, and send it
-                peerConnection.onnegotiationneeded = async () => {
-                    console.log(peerConnection.signalingState)
-                    makingOffer = true
-                    const offer = await peerConnection.createOffer()
-                    await peerConnection.setLocalDescription(offer)
-                    socket.emit('message', { to: from, data: { description: offer } })
-                    makingOffer = false
-                }
-
-                // Answer the SDP description offer
-                listeners[from] = peerConnection
-                await peerConnection.setRemoteDescription(description)
-                const answer = await peerConnection.createAnswer()
-                await peerConnection.setLocalDescription(answer)
-                window.pc = peerConnection
-
-                this.socket.emit('message', { to: from,  data: { description: answer } })
-            })
-
-            return true
-
-        } catch (e) {
-            return false
-        }
-
-    }
-
-    /* For Listeners */
-
-    //TODO Create QR CODE join
-    // Join a host
-    async joinAhost() {
-
-        changeStateTo(LISTENER)
-
-        const partyID = document.getElementById('room-input').value
-
-        remotePeerConnection = new RTCPeerConnection(config)
-        window.pc = remotePeerConnection
-        remotePeerConnection.onsignalingstatechange = (e) => {
-            if (remotePeerConnection.signalingState == 'stable') {
-                //TODO This should be Controller with no View
-                document.getElementById("room-create").setAttribute("connectionID", partyID)
-                document.getElementById("room-create").setAttribute("state", "connected")
-                $room.setAttribute("state", "connected")
-            }
-            console.log('signalingState:', remotePeerConnection.signalingState, '- ConnectionState:', remotePeerConnection.connectionState)
-        }
-
-        remotePeerConnection.onicecandidate = (event) => {
-            console.log('ICE: ', event)
-            if (event.candidate) {
-                socket.emit("message", { to: partyID,  data: { candidate: event.candidate } })
-            }
-        }
-
-        remotePeerConnection.onnegotiationneeded = async () => {
-            makingOffer = true
-            const offer = await remotePeerConnection.createOffer()
-            await remotePeerConnection.setLocalDescription(offer)
-            this.socket.emit("message", { to: partyID, data: { description: offer } })
-            makingOffer = false
-        }
-
-        remotePeerConnection.ontrack = ({ track, streams }) => {
-            console.log('onTrack: ', streams[0].active)
-
-            // TODO Make sure you're not recreating streams
-            const source = PlayerSTATE.audioContext.createMediaStreamSource(streams[0]);
-            source.connect(PlayerSTATE.audioContext.destination)
-            source.start()
-
-        }
-
-        makingOffer = true
-        const offer = await remotePeerConnection.createOffer()
-        await remotePeerConnection.setLocalDescription(offer)
-        this.socket.emit('join', { to: partyID, data: { description: offer } })
-        makingOffer = false
-
-        // prevents the page from refreshing
-        return false;
+        case STATES.IDLE:
+            socket.off("listener")
+            listeners = {}
+            remotePeerConnection = null
+            break;
     }
 }
 
-const CONNECTION = new Connection()
+
+
+// Getting an ID from the server
+socket.on('init', ({ id }) => ID = id)
+socket.on("disconnected", ({ id }) => {
+    switch(CURRENT_STATE) {
+        case STATES.LISTENER:
+            remotePeerConnection = null
+            break;
+
+        case STATES.HOST:
+            listeners[id] = null
+
+        default:
+            break;
+    }
+})
+
+
+async function fromLocalOfferToBackStable(peer) {
+    try {
+        await peer.setLocalDescription(await peer.createAnswer())
+    } catch (err) {}
+}
+
+/* (1) Handling Offer/Answer restart, to avoid glare, is as follows:
+   The peer with the smaller ID answers the offer
+*/
+
+// .on('message') assumes that the other party have a host or listener relationship
+// with the other peer, and using out-of-band communication to reach them
+// for either: connection establishment or ICE restart
+
+socket.on('message', async ({ from, data }) => {
+
+    console.log('from: ', from, 'recieved: ', data)
+
+    const remotePeer = CURRENT_STATE == STATES.HOST ? listeners[from] : remotePeerConnection
+
+    // If the remote peer is not recognized, ignore the message
+    if (remotePeer == null) {
+        return;
+    }
+
+    if (data.description) {
+
+        // Offer collision, when you're making an offer and you recieve an Offer or made/accepted an offer.
+        const offerCollision = data.description.type == "offer" && (makingOffer || remotePeer.signalingState != "stable")
+
+        // ignore offers according to (1)
+        // namely, ignore the offer, if there's an offer collision, and
+        // you have a bigger ID (you're the "bigger" peer, and don't answer offers when you made an offer already)
+        ignoreOffer = offerCollision && (ID > from)
+        if (ignoreOffer) {
+            return;
+        }
+
+        // Otherwise, it's either an SDP anwer or you're the "smaller" peer,
+        // so, you accept the offer, and send your SDP answer
+
+
+
+        // Refer to (1) to handle accepting offers
+        // In case, you reached here and it's an offer. You're the smaller peer. Accept it, send your answer
+        /*if (data.description.type == 'offer') {
+
+            let answer = remotePeer.createAnswer()
+
+            console.log(remotePeer.connectionState)
+
+            try {
+                await remotePeer.setLocalDescription(answer)
+            } catch (err) {
+                const ret = await remotePeer.setRemoteDescription(data.description)
+                answer = await remotePeer.createAnswer(data.description)
+                await remotePeer.setLocalDescription(answer).catch(console.error)
+            }
+
+            socket.emit('message', { to: from, data: { description: answer } })
+        }
+        */
+
+        // If it's an SDP answer, to a previous offer, accept it
+        if (data.description.type == "answer") {
+            await remotePeer.setRemoteDescription(data.description)
+        }
+        else if (data.description.type == 'offer') {
+            // It's an offer, and you're stable or you're the smaller peer
+            // (in which you will always accept and drop your current unstable state).
+
+            // As the smaller peer: if you sent and offer and recieved offer.
+            // Disregard your offer, and go back to "new" state
+            console.log(remotePeer.signalingState, '<<<<----')
+
+            if (remotePeer.signalingState == "have-local-offer") {
+                // reset state to new
+                await fromLocalOfferToBackStable()
+            }
+
+            // new => have-local-answer
+            await remotePeer.setRemoteDescription(data.description)
+
+            // have-local-answer => stable (connected)
+            const answer = await remotePeer.createAnswer(data.description)
+            await remotePeer.setLocalDescription(answer)
+
+            socket.emit('message', { to: from, data: { description: answer } })
+
+        }
+
+    } else if (data.candidate) {
+
+        try {
+            remotePeer.addIceCandidate(data.candidate)
+        } catch (error) {
+            if (!makingOffer) {
+                throw error
+            }
+        }
+
+    }
+
+})
+
+const addAudioToStream = () => {
+
+    switch(CURRENT_STATE) {
+        case STATES.HOST:
+            for (const key in listeners) {
+                console.log(remoteStreamDestination)
+                listeners[key].addStream(remoteStreamDestination.stream)
+            }
+            break;
+        case STATES.LISTENER:
+            break;
+        default:
+            break;
+    }
+
+
+}
+
+// Add Listners as they come
+function createRoom() {
+            console.log(PlayerSTATE)
+
+    try {
+        changeStateTo(HOST)
+        console.log('CREATE A ROOM')
+        socket.on('listener', async ({ from, description }) => {
+            console.log('Got message from', from, description)
+            const peerConnection = new RTCPeerConnection(config)
+            // Link tracks to this guy
+            const remoteDestinationNode = PlayerSTATE.addRemoteDestination()
+            peerConnection.addStream(remoteDestinationNode.stream)
+            console.log(remoteStream)
+
+            // Take care of ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                console.log('ICE: ', event)
+                if (event.candidate) {
+                    socket.emit('message', { to: from, data: { candidate: event.candidate } })
+                }
+            }
+
+            peerConnection.onsignalingstatechange = (e) => {
+                console.log('signalingState:', peerConnection.signalingState, 'connectionState: ', peerConnection.connectionState, '- from:', from)
+            }
+
+            // on re-negotiations create offer, and send it
+            peerConnection.onnegotiationneeded = async () => {
+                console.log(peerConnection.signalingState)
+                makingOffer = true
+                const offer = await peerConnection.createOffer()
+                await peerConnection.setLocalDescription(offer)
+                socket.emit('message', { to: from, data: { description: offer } })
+                makingOffer = false
+            }
+
+            // Answer the SDP description offer
+            listeners[from] = peerConnection
+            await peerConnection.setRemoteDescription(description)
+            const answer = await peerConnection.createAnswer()
+            await peerConnection.setLocalDescription(answer)
+            window.pc = peerConnection
+
+            socket.emit('message', { to: from,  data: { description: answer } })
+        })
+
+        return true
+
+    } catch (e) {
+        return false
+    }
+
+}
+
+/* For Listeners */
+
+//TODO Create QR CODE join
+// Join a host
+const joinAhost = async () => {
+
+    changeStateTo(LISTENER)
+
+    const partyID = document.getElementById('room-input').value
+
+    remotePeerConnection = new RTCPeerConnection(config)
+    window.pc = remotePeerConnection
+    remotePeerConnection.onsignalingstatechange = (e) => {
+        if (remotePeerConnection.signalingState == 'stable') {
+            //TODO This should be Controller with no View
+            if (document.getElementById('room-create')) {
+                document.getElementById("room-create").setAttribute("connectionID", partyID)
+                document.getElementById("room-create").setAttribute("state", "connected")
+            }
+
+            $room.setAttribute("state", "connected")
+        }
+        console.log('signalingState:', remotePeerConnection.signalingState, '- ConnectionState:', remotePeerConnection.connectionState)
+    }
+
+    remotePeerConnection.onicecandidate = (event) => {
+        console.log('ICE: ', event)
+        if (event.candidate) {
+            socket.emit("message", { to: partyID,  data: { candidate: event.candidate } })
+        }
+    }
+
+    remotePeerConnection.onnegotiationneeded = async () => {
+        makingOffer = true
+        const offer = await remotePeerConnection.createOffer()
+        await remotePeerConnection.setLocalDescription(offer)
+        socket.emit("message", { to: partyID, data: { description: offer } })
+        makingOffer = false
+    }
+
+    remotePeerConnection.ontrack = ({ track, streams }) => {
+        console.log('onTrack: ', streams[0].active)
+
+        // TODO Make sure you're not recreating streams
+        const source = PlayerSTATE.audioContext.createMediaStreamSource(streams[0]);
+        source.connect(PlayerSTATE.audioContext.destination)
+        source?.start()
+
+    }
+
+    makingOffer = true
+    const offer = await remotePeerConnection.createOffer()
+    await remotePeerConnection.setLocalDescription(offer)
+    socket.emit('join', { to: partyID, data: { description: offer } })
+    makingOffer = false
+
+    // prevents the page from refreshing
+    return false;
+}

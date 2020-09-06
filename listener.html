@@ -12,7 +12,7 @@
     </head>
     <body style="display: flex; flex-direction: column; height: 100vh; width: 100vw; margin: 0; color: #fff;">
         <div style="display: flex; flex-direction: column; height: 100%; width: 100%;  overflow: hidden;">
-            <div style="color: #fff; background-color: var(--primary-bg-color);font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;padding: 5px 18px;" class="listeners">
+            <div class="listeners" style="color: #fff; background-color: var(--primary-bg-color);font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;padding: 5px 20px;">
                 <div id="party-title" style="font-family: inherit; font-size: 2em; margin-bottom: 10px; padding-left: 1px;">
                     Music Party
                 </div>
@@ -20,7 +20,7 @@
                 <div>
                     <form id="room-input-form" style="display: flex; flex-direction: column;">
                         <input id="room-input" type="tel" placeholder="Enter Room Number" />
-                        <button id="room-join" type="submit" style="padding: 15px 20px; margin: 15px 0; width: 100%;font-weight: 600; height: 100%; border-radius: 25px; text-decoration: none; border: none; background-color: var(--primary-color); color: #fff">
+                        <button class="button-style" id="room-join" type="submit">
                             Join The Party 🎉
                         </button>
                     </form>
@@ -28,37 +28,9 @@
 
                 <hr style="width: 100%; border-top: 1px solid #2f2f2f; margin: 25px 0;">
 
-                <div style="display: flex; flex: 1; flex-direction: row; overflow-y: scroll;">
-                    <div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 0 0 15px 0;">
-                        <div style="width: 25%">
-                            <img style="width: 100%; height: 100%;" src='https://avataaars.io/?avatarStyle=Circle&topType=WinterHat1&accessoriesType=Kurt&hatColor=Pink&facialHairType=Blank&clotheType=Overall&clotheColor=Blue01&eyeType=Dizzy&eyebrowType=Default&mouthType=Tongue&skinColor=Light'/>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: flex-start; margin-top: 9px; white-space: pre-line; width: 70%">
-                            <span>Listener #1</span>
-                            <span style="font-weight: 100; ">MacBook Pro</span>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: flex-start; justify-content: space-between;">
-                        <div style="width: 25%">
-                            <img style="width: 100%; height: 100%;"
-                                src='https://avataaars.io/?avatarStyle=Circle&topType=ShortHairDreads01&accessoriesType=Kurt&hairColor=BrownDark&facialHairType=BeardMedium&facialHairColor=Red&clotheType=BlazerSweater&eyeType=Squint&eyebrowType=SadConcerned&mouthType=Disbelief&skinColor=Black'                            />
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: flex-start; margin-top: 9px; white-space: pre-line; width: 70%">
-                            <span>Listener #2</span>
-                            <span style="margin-top: 3px; font-weight: 100; ">iPhone X</span>
-                        </div>
-                    </div>
-
-                </div>
-
             </div>
 
             <div style="display: flex; flex-direction: column; align-items: center; overflow-y: scroll; background-color: var(--secondary-bg-color);padding: 5px;">
-
-                <button id="add-song" style="display: flex; justify-content: space-between; align-items: center; font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif; font-size: 20px;color: #fff;border:none;border-radius: 5px;margin-top: 10px; padding: 9px 13px;">
-                    Add a Song to the queue
-                    <li class="fas fa-plus fa-md"></li>
-                </button>
 
                 <div style="width: 100%; display: flex; flex-direction: column; margin: 25px 0 0;">
                     <div id="playlist" style="overflow-y: scroll; padding: 0 5px;">

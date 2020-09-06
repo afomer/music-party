@@ -486,17 +486,19 @@ async function handleAudioFile(file) {
 
 function activateAddSongButton() {
     const inputFileElement = document.createElement('input')
-    document.getElementById('add-song').onclick = () => {
-        inputFileElement.setAttribute('multiple', '')
-        inputFileElement.setAttribute('type', 'file')
-        inputFileElement.click()
+    if (document.getElementById('add-song')) {
+        document.getElementById('add-song').onclick = () => {
+            inputFileElement.setAttribute('multiple', '')
+            inputFileElement.setAttribute('type', 'file')
+            inputFileElement.click()
 
-        if (!isPlayerCreated) {
-            // connecting to speakers happens inside
-            PlayerObject = new Player()
+            if (!isPlayerCreated) {
+                // connecting to speakers happens inside
+                PlayerObject = new Player()
+            }
         }
-
     }
+
 
     inputFileElement.oninput = (e) => {
         // Add all selected files to the array list
@@ -585,16 +587,20 @@ activatePlayButton()
 activateVolumeSlider()
 document.getElementById("room-input-form").onsubmit = (e) => {
     e.preventDefault()
-    CONNECTION.joinAhost()
+    joinAhost()
     return false;
 }
-document.getElementById('room-create').onclick = (e) => {
-    if ( CONNECTION.createRoom() ) {
-        document.getElementById("party-title").textContent = `You're the host of Party: ${ID}`
+
+if (document.getElementById('room-create')) {
+    document.getElementById('room-create').onclick = (e) => {
+        if ( createRoom() ) {
+            document.getElementById("party-title").textContent = `You're the host of Party: ${ID}`
+        }
+        e.preventDefault()
+        return false;
     }
-    e.preventDefault()
-    return false;
 }
+
 const unconnected_TEXT = "Join a Party 🎉"
 const connected_TEXT = "Leave the Party"
 
