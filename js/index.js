@@ -587,35 +587,54 @@ activatePlayButton()
 activateVolumeSlider()
 document.getElementById("room-input-form").onsubmit = (e) => {
     e.preventDefault()
-    joinAhost()
+    Party.join()
     return false;
 }
 
 if (document.getElementById('room-create')) {
     document.getElementById('room-create').onclick = (e) => {
-        if ( createRoom() ) {
-            document.getElementById("party-title").textContent = `You're the host of Party: ${ID}`
+        if ( Party.create() ) {
+            document.getElementById("party-title").textContent = `You're the host of Party: ${Party.ID}`
         }
         e.preventDefault()
         return false;
     }
 }
 
-const unconnected_TEXT = "Join a Party 🎉"
-const connected_TEXT = "Leave the Party"
+const UNCONNECTED_HOST_TEXT = "Start a Party 🎉"
+const CONNECTED_HOST_TEXT = "Close the Party"
+
+const UNCONNECTED_LISTENER_TEXT = "Join a Party 🎉"
+const CONNECTED_LISTENER_TEXT = "Leave the Party"
 
 const $room = document.getElementById('room-join')
+const $room_create = document.getElementById('room-create')
 
 const observer = new MutationObserver(() => {
     console.log('state')
 
-    if ($room.getAttribute("state") == "connected"){
-        $room.className = 'button-style-leave'
-        $room.textContent = connected_TEXT
-    } else if ($room.getAttribute("state") == "unconnected") {
-        $room.className = 'button-style'
-        $room.textContent = unconnected_TEXT
+    // For Host
+    if ($room_create && $room_create.getAttribute("state") == "connected"){
+        $room_create.className = 'button-style-leave'
+        $room_create.textContent = CONNECTED_HOST_TEXT
+        $room.style.visibility = 'none'
+        document.getElementById('room-input').visibility = 'none'
+    } else if ($room_create && $room_create.getAttribute("state") == "unconnected") {
+        $room_create.className = 'button-style'
+        $room_create.textContent = UNCONNECTED_HOST_TEXT
+        $room.style.visibility = 'block'
+        document.getElementById('room-input').visibility = 'block'
     }
+
+    // For Listeners
+    if ($room && $room.getAttribute("state") == "connected"){
+        $room.className = 'button-style-leave'
+        $room.textContent = CONNECTED_LISTENER_TEXT
+    } else if ($room && $room.getAttribute("state") == "unconnected") {
+        $room.className = 'button-style'
+        $room.textContent = UNCONNECTED_LISTENER_TEXT
+    }
+
 })
 
 observer.observe($room, {
