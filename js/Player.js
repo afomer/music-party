@@ -230,6 +230,7 @@ class PlayerFSM {
                     this.duration = this.currentSong.getInfo().duration * 1000
                     this.bufferSource.start(0, Math.floor(this.currentSeekTime/1000))
                     this.setIntervalTimer()
+                    return audioBuffer
                 })
     }
 

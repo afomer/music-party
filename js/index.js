@@ -475,6 +475,14 @@ async function handleAudioFile(file) {
         document.getElementById('song-artist').textContent = artistFormatted
 
         PlayerSTATE.play(songIdx)
+        .then(() => PlayerSTATE.currentSong.getArrayBufferFromFile())
+        .then((inputAudio) => {
+            const audioArrayBuffer = inputAudio.slice(0, 16000)
+            console.log(audioArrayBuffer)
+            console.log({ dataChannel: Party.dataChannel, isDataChannelReady: Party.isDataChannelOpen, audioArrayBuffer, byteLength: audioArrayBuffer.byteLength })
+            Party.dataChannel.send(audioArrayBuffer)
+        })
+
         // Add duration to audio tag
         $audio_player.setAttribute("duration", duration)
     }

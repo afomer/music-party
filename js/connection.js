@@ -23,6 +23,8 @@ class Connection {
     constructor(server_address) {
         this.config    = {}
         this.listeners = null
+        this.dataChannel = null
+        this.isDataChannelOpen = false
         this.socket = io(server_address)
         this.makingOffer  = false
         this.ignoreOffer = false
@@ -230,7 +232,7 @@ class Connection {
         }
 
         this.remotePeerConnection.onicecandidate = (event) => {
-            if (event.candidate && event.candidate.protocol == "tcp") {
+            if (event.candidate) {
                 this.socket.emit("message", { to: partyID,  data: { candidate: event.candidate } })
             }
         }
@@ -243,18 +245,29 @@ class Connection {
             this.makingOffer = false
         }
 
-        let audioSource = undefined
-        this.remotePeerConnection.ontrack = ({ track, streams }) => {
-            console.log('onTrack: ', streams[0].active)
+        this.dataChannel = this.remotePeerConnection.createDataChannel("datach")
+        this.dataChannel.addEventListener("open", event => {
+            this.isDataChannelOpen = true
+            console.log({ isDataChannelOpen : this.isDataChannelOpen})
+        })
+        this.dataChannel.addEventListener("close", event => {
+            this.isDataChannelOpen = false
+            console.log({isDataChannelOpen: this.isDataChannelOpen})
+        })
 
-            // TODO Make sure you're not recreating streams
-            console.log(audioSource, streams)
-            if (audioSource == undefined || audioSource.id != streams[0].id) {
-                audioSource = PlayerSTATE.audioContext.createMediaStreamSource(streams[0]);
-                audioSource.connect(PlayerSTATE.audioContext.destination)
-                if (audioSource.start) {
-                    audioSource.start()
-                }
+        let audioSource = undefined
+        this.dataChannel.onmessage = ({ data }) => {
+            console.log('message: ', data)
+            if (data instanceof ArrayBuffer) {
+                PlayerSTATE.audioContext.decodeAudioData(data, (buffer) => {
+                    console.log('buffer: ', buffer)
+                    audioSource = PlayerSTATE.audioContext.createBufferSource();
+                    audioSource.buffer = buffer
+                    audioSource.connect(PlayerSTATE.audioContext.destination)
+                    if (audioSource.start) {
+                        audioSource.start()
+                    }
+                })
             }
 
         }
@@ -277,14 +290,23 @@ class Connection {
             this.socket.on('listener', async ({ from, description }) => {
                 console.log('Got message from', from, description)
                 const peerConnection = new RTCPeerConnection(this.config)
-                // Link tracks to this guy
-                const remoteDestinationNode = PlayerSTATE.addRemoteDestination()
-                peerConnection.addStream(remoteDestinationNode.stream)
-                console.log(remoteStream)
+                peerConnection.ondatachannel = ({ channel }) => {
+                    this.dataChannel = channel
+                    this.dataChannel.onopen = () => {
+                        this.isDataChannelOpen = true
+                        console.log({isDataChannelOpen: this.isDataChannelOpen})
+                    }
+                    this.dataChannel.onclose = () => {
+                        this.isDataChannelOpen = false
+                        console.log({isDataChannelOpen: this.isDataChannelOpen})
+                    }
+                    this.dataChannel.onerror = console.log
+                }
 
                 // Take care of ICE candidates
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && event.candidate.protocol == "tcp") {
+                    // use datachannels instead of adding streams ?!
+                    if (event.candidate) {
                         this.socket.emit('message', { to: from, data: { candidate: event.candidate } })
                     }
                 }
