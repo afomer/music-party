@@ -283,9 +283,7 @@ class Connection {
                     audioSource = PlayerSTATE.audioContext.createBufferSource();
                     audioSource.buffer = buffer
                     audioSource.connect(PlayerSTATE.audioContext.destination)
-                    if (audioSource.start) {
-                        audioSource.start()
-                    }
+                    audioSource.start()
                 })
             }
 

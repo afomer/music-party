@@ -51,6 +51,17 @@ input[type="range"]::-webkit-slider-thumb {
 
 }
 
+.highlight {
+    border: 4px solid var(--primary-color);
+    background: #4c52b2c2;
+    border-radius: 11px;
+    padding: 0px;
+    font-family: inherit;
+    font-size: 2em;
+    margin-bottom: 10px;
+    padding-left: 1px;
+}
+
 #room-input, #room-input:focus {
     outline: none;
     height: 100%;

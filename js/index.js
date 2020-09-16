@@ -3,10 +3,43 @@ let isPlayerCreated = false
 let PlayerObject    = null
 let PlayerSTATE = undefined
 
-document.addEventListener("touchstart", () => {
+function addPlayerInit() {
     // Create a player object once you get a touch
     PlayerSTATE = new PlayerFSM()
-})
+
+    // Once the player is created remove the listener
+    // For Only-once runtime of the function/creation of Player
+    document.removeEventListener("touchstart", addPlayerInit)
+    const numberOfChannels = 1
+    const length = 1
+    const sampleRate = 22050
+    var buffer = PlayerSTATE.audioContext.createBuffer(numberOfChannels, length, sampleRate)
+    var source  = PlayerSTATE.audioContext.createBufferSource()
+    source.buffer = buffer
+    source.connect(PlayerSTATE.audioContext.destination)
+    source.onended = () => {
+        console.log('WebAudio Should be Unlocked')
+    }
+    source.start()
+
+    // Unlock HTML5 Audio - load a data url of short silence and play it
+    // This will allow us to play web audio when the mute toggle is on
+    var silenceDataURL = "data:audio/mp3;base64,//MkxAAHiAICWABElBeKPL/RANb2w+yiT1g/gTok//lP/W/l3h8QO/OCdCqCW2Cw//MkxAQHkAIWUAhEmAQXWUOFW2dxPu//9mr60ElY5sseQ+xxesmHKtZr7bsqqX2L//MkxAgFwAYiQAhEAC2hq22d3///9FTV6tA36JdgBJoOGgc+7qvqej5Zu7/7uI9l//MkxBQHAAYi8AhEAO193vt9KGOq+6qcT7hhfN5FTInmwk8RkqKImTM55pRQHQSq//MkxBsGkgoIAABHhTACIJLf99nVI///yuW1uBqWfEu7CgNPWGpUadBmZ////4sL//MkxCMHMAH9iABEmAsKioqKigsLCwtVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVV//MkxCkECAUYCAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+    var tag = document.createElement("audio");
+    tag.controls = false;
+    tag.preload = "auto";
+    tag.loop = false;
+    tag.src = silenceDataURL;
+    tag.onended = function()
+    {
+        console.log("HTMLAudio unlocked!");
+    };
+    var p = tag.play();
+
+    console.log('Created The Player')
+}
+
+document.addEventListener("touchstart", addPlayerInit)
 
 document.addEventListener("click", () => {
     PlayerSTATE = PlayerSTATE || new PlayerFSM()
@@ -452,7 +485,7 @@ async function handleAudioFile(file) {
     const title  = tags['title'] || file['name']
     const duration = await getAudioFileDuration(file)
 
-    const img    = tags['picture']?.['data'] ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']?.['data']) : DEFAULT_PIC
+    const img    = (tags['picture'] && tags['picture']['data']) ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']['data']) : DEFAULT_PIC
     const artist = tags['artist']
     const album  = tags['album']
     const songObject = new Song(file, title, duration, artist, img)
@@ -623,21 +656,7 @@ const activateVolumeSlider = () => {
 activateAddSongButton()
 activatePlayButton()
 activateVolumeSlider()
-document.getElementById("room-input-form").onsubmit = (e) => {
-    e.preventDefault()
-    Party.join()
-    return false;
-}
 
-if (document.getElementById('room-create')) {
-    document.getElementById('room-create').onclick = (e) => {
-        if ( Party.create() ) {
-            document.getElementById("party-title").textContent = `You're the host of Party: ${Party.ID}`
-        }
-        e.preventDefault()
-        return false;
-    }
-}
 
 const UNCONNECTED_HOST_TEXT = "Start a Party 🎉"
 const CONNECTED_HOST_TEXT = "Close the Party"
@@ -648,6 +667,14 @@ const CONNECTED_LISTENER_TEXT = "Leave the Party"
 const $room = document.getElementById('room-join')
 const $room_create = document.getElementById('room-create')
 
+document.getElementById("room-input-form").onsubmit = (e) => {
+    e.preventDefault()
+    Party.join()
+    return false;
+}
+
+
+
 const observer = new MutationObserver(() => {
     console.log('state')
 
@@ -655,13 +682,14 @@ const observer = new MutationObserver(() => {
     if ($room_create && $room_create.getAttribute("state") == "connected"){
         $room_create.className = 'button-style-leave'
         $room_create.textContent = CONNECTED_HOST_TEXT
-        $room.style.visibility = 'none'
-        document.getElementById('room-input').visibility = 'none'
+        $room.style.visibility = 'hidden'
+        document.getElementById('room-input-form').style.visibility = 'hidden'
+        console.log('>', document.getElementById('room-input-form').style.visibility)
     } else if ($room_create && $room_create.getAttribute("state") == "unconnected") {
         $room_create.className = 'button-style'
         $room_create.textContent = UNCONNECTED_HOST_TEXT
-        $room.style.visibility = 'block'
-        document.getElementById('room-input').visibility = 'block'
+        $room.style.visibility = 'visible'
+        document.getElementById('room-input-form').style.visibility = 'visible'
     }
 
     // For Listeners
@@ -675,11 +703,31 @@ const observer = new MutationObserver(() => {
 
 })
 
-observer.observe($room, {
-    attributes: true,
-    attributeFilter: ['state'],
-    characterData: false
-})
+if ($room_create) {
+    $room_create.onclick = (e) => {
+        if ( Party.create() ) {
+            document.getElementById("party-title").textContent = `You're the host of Party: ${Party.ID}`
+           $room_create.setAttribute("connectionID", Party.ID)
+           $room_create.setAttribute("state", "connected")
+           console.log('?')
+        }
+    }
+    observer.observe($room_create, {
+        attributes: true,
+        attributeFilter: ['state'],
+        characterData: false
+    })
+}
+if ($room) {
+    observer.observe($room, {
+        attributes: true,
+        attributeFilter: ['state'],
+        characterData: false
+    })
+}
+
+
+
 
 // Take care of progressing the bar
 const updateSlider =  (e) => {
