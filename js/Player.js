@@ -1,5 +1,41 @@
 var AudioContext = AudioContext || window.AudioContext || window.webkitAudioContext
 
+class Song {
+
+    constructor(file="", title="", duration="", artist="", img="") {
+        this.file = file
+        this.title = title
+        this.duration = duration
+        this.artist = artist
+        this.img = img
+    }
+
+    getInfo() {
+        return {
+            file: this.file,
+            title: this.title,
+            duration: this.duration,
+            artist: this.artist,
+            img: this.img
+        }
+    }
+
+    getArrayBufferFromFile() {
+
+        return new Promise((resolve, reject) => {
+
+            const reader = new FileReader()
+
+            reader.onload = () => {
+                resolve(reader.result)
+            }
+
+            reader.readAsArrayBuffer(this.file)
+        })
+    }
+
+}
+
 class PlayerFSM {
 
     constructor() {
