@@ -24,6 +24,8 @@ function addPlayerInit() {
     // For Only-once runtime of the function/creation of Player
     document.removeEventListener("touchstart", addPlayerInit)
     document.removeEventListener("click", addPlayerInit)
+    console.log('removeEventListener')
+
     const numberOfChannels = 1
     const length = 1
     const sampleRate = 22050
@@ -312,6 +314,7 @@ function onVolumeChange(e) {
     }
 }
 
+
 function onMutationChange() {
     console.log('state')
 
@@ -345,28 +348,6 @@ function onMutationChange() {
 * Main Function Call
 *
 */
-
-// A workaround to turn WebAudio on the browser, once the screen is touched/clicked
-document.addEventListener("touchstart", addPlayerInit.bind(this))
-document.addEventListener("click", addPlayerInit.bind(this))
-
-// Update the slider bar, the time elapsed, and the time remaining
-document.addEventListener("SEEK_TIME_UPDATE", updateTimeProgressUI)
-
-// Visually update the slider immedietly when its value changes
-$slider.addEventListener('input', updateSlider)
-$volume_range.addEventListener('input', updateSlider)
-
-
-// Once the change happens, update the logic
-$slider.addEventListener('change', onSliderSeek)
-$volume_range.addEventListener('change', onVolumeChange)
-
-// Make the Add Song, and the Play buttons functional
-activateAddSongButton()
-activatePlayButton()
-activateVolumeSlider()
-
 const UNCONNECTED_HOST_TEXT = "Start a Party 🎉"
 const CONNECTED_HOST_TEXT = "Close the Party"
 
@@ -376,34 +357,76 @@ const CONNECTED_LISTENER_TEXT = "Leave the Party"
 const $room = document.getElementById('room-join')
 const $room_create = document.getElementById('room-create')
 
-document.getElementById("room-input-form").onsubmit = (e) => {
-    e.preventDefault()
-    Party.join()
-    return false;
-}
+let is_in_room = false
 
-const observer = new MutationObserver(onMutationChange)
+main()
+function main() {
 
-if ($room_create) {
-    $room_create.onclick = (e) => {
-        if ( Party.create() ) {
-            document.getElementById("party-title").textContent = `You're the host of Party: ${Party.ID}`
-           $room_create.setAttribute("connectionID", Party.ID)
-           $room_create.setAttribute("state", "connected")
-           console.log('?')
-        }
+    // A workaround to turn WebAudio on the browser, once the screen is touched/clicked
+    document.addEventListener("touchstart", addPlayerInit)
+    document.addEventListener("click", addPlayerInit)
+
+    // Update the slider bar, the time elapsed, and the time remaining
+    document.addEventListener("SEEK_TIME_UPDATE", updateTimeProgressUI)
+
+    // Visually update the slider immedietly when its value changes
+    $slider.addEventListener('input', updateSlider)
+    $volume_range.addEventListener('input', updateSlider)
+
+
+    // Once the change happens (through seeking or programmatically), update the logic
+    $slider.addEventListener('change', onSliderSeek)
+    $volume_range.addEventListener('change', onVolumeChange)
+
+    // Make the Add Song, and Play buttons functional
+    activateAddSongButton()
+    activatePlayButton()
+    activateVolumeSlider()
+
+
+    document.getElementById("room-input-form").onsubmit = (e) => {
+        e.preventDefault()
+        Party.join()
+        return false;
     }
-    observer.observe($room_create, {
-        attributes: true,
-        attributeFilter: ['state'],
-        characterData: false
-    })
-}
-if ($room) {
-    observer.observe($room, {
-        attributes: true,
-        attributeFilter: ['state'],
-        characterData: false
-    })
-}
 
+    const observer = new MutationObserver(onMutationChange)
+
+    if ($room_create) {
+        $room_create.onclick = async (e) => {
+            if (!is_in_room) {
+                const createdParty = await Party.create()
+                if (createdParty) {
+                    document.getElementById("party-title").textContent = `Party ID: ${Party.ID}`
+                    $room_create.setAttribute("connectionID", Party.ID)
+                    $room_create.setAttribute("state", "connected")
+                    document.getElementById("peer-type").className = "highlight"
+                    document.getElementById("peer-type").textContent = "Host"
+                    is_in_room = true
+                } else {
+                    alert('Not connected to the Server')
+                }
+            } else {
+                $room_create.setAttribute("connectionID", Party.ID)
+                $room_create.setAttribute("state", "unconnected")
+                Party.leave()
+                is_in_room = false
+            }
+        }
+
+        observer.observe($room_create, {
+            attributes: true,
+            attributeFilter: ['state'],
+            characterData: false
+        })
+
+    }
+    if ($room) {
+        observer.observe($room, {
+            attributes: true,
+            attributeFilter: ['state'],
+            characterData: false
+        })
+    }
+
+}

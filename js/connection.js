@@ -245,7 +245,7 @@ class Connection {
             this.makingOffer = false
         }
 
-        this.dataChannel = this.remotePeerConnection.createDataChannel("datach")
+        this.dataChannel = this.remotePeerConnection.createDataChannel("datach", { reliable: true })
         this.dataChannel.addEventListener("open", event => {
             this.isDataChannelOpen = true
             console.log({ isDataChannelOpen : this.isDataChannelOpen})
@@ -299,9 +299,33 @@ class Connection {
         return false;
     }
 
+    hasID() {
+        console.log(Number(this.ID), this.ID)
+        return this.ID != undefined && Number.isFinite(Number(this.ID))
+    }
+
+    async leave() {
+        if (this.listeners != undefined) {
+            for (const i in this.listeners) {
+                this.listeners[i].close()
+            }
+        }
+
+        if (this.remotePeerConnection != undefined) {
+            this.remotePeerConnection.close()
+        }
+
+    }
+
     async create() {
         // Add Listners as they come
         try {
+            console.log('HasID', this.hasID())
+
+            if (!this.hasID()) {
+                return false
+            }
+
             this.changeStateTo(this.HOST)
             console.log('CREATE A ROOM')
             this.socket.on('listener', async ({ from, description }) => {
