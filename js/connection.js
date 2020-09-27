@@ -1,3 +1,4 @@
+"use strict"
 
 /*
 
@@ -11,6 +12,7 @@ The difference is that hosts store a "listeners array"
 
 /* Global Variables */
 const SERVER_ADDRESS = "http://192.168.1.11:3000"
+
 
 /* STATES */
 // There are two main states maintained, listener and host
@@ -33,54 +35,80 @@ class Connection {
         this.LISTENER = "LISTENER"
         this.HOST = "HOST"
         this.IDLE = "IDLE"
-        this.STATES = Object.freeze({ IDLE: 0, LISTENER: 1, HOST: 2 })
+
+        // The events For event Listeners
+        this.EVENT_TYPES = {
+            STATE_CHANGE: "STATE_CHANGE",
+        }
+
+        this.STATES = Object.freeze({ IDLE: "IDLE", LISTENER: "LISTENER", HOST: "HOST" })
         this.CURRENT_STATE = this.STATES.IDLE
     }
 
-    changeStateTo(FromSTATE, newSTATE) {
-
-        this.CURRENT_STATE = this.STATES[FromSTATE]
+    async transitionToState(newSTATE, ...args) {
 
         console.log(this.CURRENT_STATE, newSTATE)
 
-        switch(this.CURRENT_STATE) {
+        switch(newSTATE) {
             case this.STATES.LISTENER:
-                this.remotePeerConnection = null
+
+                if (this.CURRENT_STATE == this.STATES.IDLE) {
+                    await this.handle_join(...args)
+                    this.CURRENT_STATE = this.STATES.LISTENER
+                } else {
+                    throw new Error(`illegal transition from ${this.CURRENT_STATE} to ${newSTATE}`)
+                }
+
                 break;
 
             case this.STATES.HOST:
 
-                for (const i in this.listeners) {
-                    this.listeners[i].pc.close()
+                if (this.CURRENT_STATE == this.STATES.IDLE) {
+                    await this.handle_create()
+                    this.listeners = {}
+                    this.CURRENT_STATE = this.STATES.HOST
+                } else {
+                    throw new Error(`illegal transition from ${this.CURRENT_STATE} to ${newSTATE}`)
                 }
-
-                this.socket.off("listener")
-                this.listeners = {}
                 break;
 
             case this.STATES.IDLE:
-                this.socket.off("listener")
-                this.listeners = {}
-                this.remotePeerConnection = null
-                break;
-        }
-    }
 
-    addAudioToStream() {
-
-        switch(this.CURRENT_STATE) {
-            case this.STATES.HOST:
-                for (const key in this.listeners) {
-                    console.log(remoteStreamDestination)
-                    this.listeners[key].addStream(remoteStreamDestination.stream)
+                if (this.CURRENT_STATE != "IDLE") {
+                    throw new Error('illegal transition from', this.CURRENT_STATE, 'to', newSTATE)
+                } else {
+                    if (this.listeners && typeof this.listeners == "object") {
+                        for (const i in this.listeners) {
+                            this.listeners[i].pc.close()
+                        }
+                    }
+                    this.listeners = {}
+                    this.socket.off("listener")
+                    this.remotePeerConnection = null
                 }
                 break;
-            case this.STATES.LISTENER:
-                break;
-            default:
-                break;
         }
 
+        this.dispatchEventForListeners(this.EVENT_TYPES.STATE_CHANGE, { STATE: this.CURRENT_STATE })
+    }
+
+    dispatchEventForListeners(event, detail) {
+
+        if (this.EVENT_TYPES[event]) {
+            document.dispatchEvent(
+                new CustomEvent(this.EVENT_TYPES[event],
+                    {
+                        bubbles: true,
+                        detail
+                    }
+                )
+            )
+
+            return true
+        }
+
+        console.warn('Unkown event type:', event)
+        return false
     }
 
     async fromLocalOfferToBackStable(peer) {
@@ -106,6 +134,9 @@ class Connection {
                     break;
             }
         })
+
+        this.socket.on("connect_error", console.error)
+        this.socket.on("connect_fail", console.error)
 
         /* (1) Handling Offer/Answer restart, to avoid glare, is as follows:
         The peer with the smaller ID answers the offer
@@ -141,28 +172,6 @@ class Connection {
 
                 // Otherwise, it's either an SDP anwer or you're the "smaller" peer,
                 // so, you accept the offer, and send your SDP answer
-
-
-
-                // Refer to (1) to handle accepting offers
-                // In case, you reached here and it's an offer. You're the smaller peer. Accept it, send your answer
-                /*if (data.description.type == 'offer') {
-
-                    let answer = remotePeer.createAnswer()
-
-                    console.log(remotePeer.connectionState)
-
-                    try {
-                        await remotePeer.setLocalDescription(answer)
-                    } catch (err) {
-                        const ret = await remotePeer.setRemoteDescription(data.description)
-                        answer = await remotePeer.createAnswer(data.description)
-                        await remotePeer.setLocalDescription(answer).catch(console.error)
-                    }
-
-                    this.socket.emit('message', { to: from, data: { description: answer } })
-                }
-                */
 
                 // If it's an SDP answer, to a previous offer, accept it
                 if (data.description.type == "answer") {
@@ -207,15 +216,7 @@ class Connection {
         })
     }
 
-    async join() {
-        /* For Listeners */
-
-        //TODO Create QR CODE join
-        // Join a host
-        this.changeStateTo(this.LISTENER)
-
-        const partyID = document.getElementById('room-input').value
-
+    async handle_join(partyID) {
         this.remotePeerConnection = new RTCPeerConnection(this.config)
         window.pc = this.remotePeerConnection
         this.remotePeerConnection.onsignalingstatechange = (e) => {
@@ -259,8 +260,8 @@ class Connection {
         this.dataChannel.onmessage = ({ data }) => {
             console.log('message: ', data)
             if (data instanceof ArrayBuffer && data.byteLength > 1) {
-                audioSource = Array.isArray(audioSource) ? audioSource : []
-                audioSource.push(data)
+                    audioSource = Array.isArray(audioSource) ? audioSource : []
+                    audioSource.push(data)
             }
 
             if (data instanceof ArrayBuffer && data.byteLength == 1 && audioSource != undefined) {
@@ -286,7 +287,6 @@ class Connection {
                     audioSource.start()
                 })
             }
-
         }
 
         this.makingOffer = true
@@ -295,12 +295,22 @@ class Connection {
         this.socket.emit('join', { to: partyID, data: { description: offer } })
         this.makingOffer = false
 
+        return true
+    }
+
+    async join(partyID) {
+        /* For Listeners */
+
+        //TODO Create QR CODE join
+        // Join a host
+        this.transitionToState(this.STATES.LISTENER, partyID)
+
         // prevents the page from refreshing
         return false;
     }
 
     hasID() {
-        console.log(Number(this.ID), this.ID)
+        console.log(Number(this.ID), this.ID != undefined, Number.isFinite(Number(this.ID)))
         return this.ID != undefined && Number.isFinite(Number(this.ID))
     }
 
@@ -317,32 +327,23 @@ class Connection {
 
     }
 
-    async create() {
-        // Add Listners as they come
-        try {
-            console.log('HasID', this.hasID())
-
-            if (!this.hasID()) {
-                return false
-            }
-
-            this.changeStateTo(this.HOST)
-            console.log('CREATE A ROOM')
-            this.socket.on('listener', async ({ from, description }) => {
-                console.log('Got message from', from, description)
-                const peerConnection = new RTCPeerConnection(this.config)
-                peerConnection.ondatachannel = ({ channel }) => {
-                    this.dataChannel = channel
-                    this.dataChannel.onopen = () => {
-                        this.isDataChannelOpen = true
-                        console.log({isDataChannelOpen: this.isDataChannelOpen})
+    async handle_create() {
+        return new Promise((resolve, reject) => {
+                this.socket.on('listener', async ({ from, description }) => {
+                    console.log('Got message from', from, description)
+                    const peerConnection = new RTCPeerConnection(this.config)
+                    peerConnection.ondatachannel = ({ channel }) => {
+                        this.dataChannel = channel
+                        this.dataChannel.onopen = () => {
+                            this.isDataChannelOpen = true
+                            console.log({isDataChannelOpen: this.isDataChannelOpen})
+                        }
+                        this.dataChannel.onclose = () => {
+                            this.isDataChannelOpen = false
+                            console.log({isDataChannelOpen: this.isDataChannelOpen})
+                        }
+                        this.dataChannel.onerror = console.log
                     }
-                    this.dataChannel.onclose = () => {
-                        this.isDataChannelOpen = false
-                        console.log({isDataChannelOpen: this.isDataChannelOpen})
-                    }
-                    this.dataChannel.onerror = console.log
-                }
 
                 // Take care of ICE candidates
                 peerConnection.onicecandidate = (event) => {
@@ -372,9 +373,23 @@ class Connection {
                 const answer = await peerConnection.createAnswer()
                 await peerConnection.setLocalDescription(answer)
                 window.pc = peerConnection
-
                 this.socket.emit('message', { to: from,  data: { description: answer } })
             })
+            resolve()
+        })
+    }
+
+    async create() {
+        // Add Listners as they come
+        try {
+            console.log('HasID', !this.hasID())
+
+            if (!this.hasID()) {
+                console.log('????')
+                return false
+            }
+
+            console.log('CREATE A ROOM', await this.transitionToState(this.STATES.HOST))
 
             return true
 
@@ -384,5 +399,5 @@ class Connection {
     }
 }
 
-var Party = new Connection(SERVER_ADDRESS)
+const Party = new Connection(SERVER_ADDRESS)
 Party.init()

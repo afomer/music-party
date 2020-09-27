@@ -386,7 +386,8 @@ function main() {
 
     document.getElementById("room-input-form").onsubmit = (e) => {
         e.preventDefault()
-        Party.join()
+        const partyID = document.getElementById('room-input').value
+        Party.join(partyID)
         return false;
     }
 
@@ -397,7 +398,7 @@ function main() {
             if (!is_in_room) {
                 const createdParty = await Party.create()
                 if (createdParty) {
-                    document.getElementById("party-title").textContent = `Party ID: ${Party.ID}`
+                    document.getElementById("party-title").textContent = `🎉 Party ID: ${Party.ID}`
                     $room_create.setAttribute("connectionID", Party.ID)
                     $room_create.setAttribute("state", "connected")
                     document.getElementById("peer-type").className = "highlight"
