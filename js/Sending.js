@@ -1,15 +1,32 @@
 const BUFFER_LIMIT = 15 * 1024 // ~15.36KB < 16KB Chrome Buffer limit
-const CHUNCK_SIZE  = BUFFER_LIMIT
+const CHUNKID_SIZE_IN_NUM_OF_BYTES = 1
+const CHUNCKID_VALUE_SIZE_IN_NUM_OF_BYTES = 7
+const CHUNKTOTAL_SIZE_IN_NUM_OF_BYTES = 1
+const CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES = 7
+const FILEID_SIZE_IN_NUM_OF_BYTES = 1
+const FILEID_VALUE_SIZE_IN_NUM_OF_BYTES = 7
+const BYTE_SIZE_IN_BITS = 8
+const HEADER_SIZE  = (
+    CHUNKID_SIZE_IN_NUM_OF_BYTES +
+    CHUNCKID_VALUE_SIZE_IN_NUM_OF_BYTES +
+    CHUNKTOTAL_SIZE_IN_NUM_OF_BYTES +
+    CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES +
+    FILEID_SIZE_IN_NUM_OF_BYTES +
+    FILEID_VALUE_SIZE_IN_NUM_OF_BYTES +
+    BYTE_SIZE_IN_BITS
+)
+const CHUNCK_SIZE  = BUFFER_LIMIT - HEADER_SIZE
 
 function sendChunk(dataChannel, data) {
 
     function sendChunkHelper(dataChannel, data, resolve) {
         /** if the buffer can afford to put the data chunk, then put it */
+        console.log(dataChannel.bufferedAmount + data.byteLength <= BUFFER_LIMIT)
         if (dataChannel.bufferedAmount + data.byteLength <= BUFFER_LIMIT ) {
             dataChannel.send(data)
             resolve()
         } else {
-            /** otherwise check in 90ms */
+            /** otherwise check in 10ms */
             setTimeout(() => sendChunkHelper(dataChannel, data, resolve), 10)
         }
     }
@@ -19,33 +36,31 @@ function sendChunk(dataChannel, data) {
 
 /**
 * Array Buffer Structure
-* [ How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Data ]
-* [ 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | Data ~(15KB - 16 Bytes) ]
+* [ How Many Bytes is fileID | fileID | How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Data ]
+* [ 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | Data ~(15KB - 24 Bytes) ]
 * (Chunk Data is the remaining of the sent arraybuffer/packet)
 *
 * Shifts (<< and >>) treat numbers as set of 32-bit values, 32/8 = 4 bytes necessary for representation
 * Number.MAX_SAFE_INTEGER = 2**53 - 1, Math.ceil(53/8) = 7 bytes necessary for representation
 *
 */
-const CHUNKID_SIZE_IN_NUM_OF_BYTES = 1
-const CHUNCKID_VALUE_SIZE_IN_NUM_OF_BYTES = 7
-const CHUNKTOTAL_SIZE_IN_NUM_OF_BYTES = 1
-const CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES = 7
-const BYTE_SIZE_IN_BITS = 8
 
 /**
  * Prepend Metadata to data according to the structure:
- * [ How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Data ]
+ * [ How Many Bytes is fileID | fileID | How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Data ]
  *
  * @param {ArrayBuffer} data
  * @param {Integer} chunkID
  * @param {Integer} chunkTotal
+ * @param {Integer} fileID
  */
 const MAX_POSITIVE_INTEGER = 2**32 - 1
 
-function getPacketStructure(data, chunkID, chunkTotal) {
 
-    if (chunkID > MAX_POSITIVE_INTEGER || chunkTotal > MAX_POSITIVE_INTEGER) {
+// fileID is defaulted to 0
+function getPacketStructure(data, chunkID, chunkTotal, fileID = 0) {
+
+    if (fileID > MAX_POSITIVE_INTEGER || chunkID > MAX_POSITIVE_INTEGER || chunkTotal > MAX_POSITIVE_INTEGER) {
         throw Error('The ChunkID or chunkTotal value is greater than 2^(32)-1. Total file size should be up to 67553.99 Terabytes')
     }
 
@@ -58,22 +73,31 @@ function getPacketStructure(data, chunkID, chunkTotal) {
         throw Error(`No data provided, instead what's provided: ${chunkTotal}`)
     }
 
-    const totalArrayBufferSize = (CHUNKID_SIZE_IN_NUM_OF_BYTES + CHUNCKID_VALUE_SIZE_IN_NUM_OF_BYTES +
-        CHUNKTOTAL_SIZE_IN_NUM_OF_BYTES + CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES + data.byteLength)
+    const totalArrayBufferSize = HEADER_SIZE + CHUNCK_SIZE
 
     let   resultArrayBuffer = new ArrayBuffer(totalArrayBufferSize)
     const resultArrayBufferDataView = new DataView(resultArrayBuffer)
 
-
     /*
     * Complete Strucutre Overview:
     *
-    * [ How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Chunk Data ]
-    * [ 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | Data ~(15KB - 16 Bytes) ]
+    * [ How Many Bytes is fileID | fileID | How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Data ]
+    * [ 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | Data ~(15KB - 24 Bytes) ]
     */
+    let offset = 0
+
+    // [How Many Bytes is fileID]
+    resultArrayBufferDataView.setUint8(offset, FILEID_VALUE_SIZE_IN_NUM_OF_BYTES)
+    offset += FILEID_SIZE_IN_NUM_OF_BYTES
+
+
+    // [fileID]
+    for (const i of [...Array(FILEID_VALUE_SIZE_IN_NUM_OF_BYTES).keys()]) {
+        resultArrayBufferDataView.setUint8(i + offset, (fileID >> (BYTE_SIZE_IN_BITS * i)) & 0xFF)
+    }
+    offset += FILEID_VALUE_SIZE_IN_NUM_OF_BYTES
 
     // [How Many Bytes is ChunkID]
-    let offset = 0
     resultArrayBufferDataView.setUint8(offset, CHUNCKID_VALUE_SIZE_IN_NUM_OF_BYTES)
     offset += CHUNKID_SIZE_IN_NUM_OF_BYTES
 
@@ -96,11 +120,14 @@ function getPacketStructure(data, chunkID, chunkTotal) {
     offset += CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES
 
     // [Data]
-    for (const i in data) {
-        resultArrayBufferDataView.setUint8(i + offset, dataSlice[i])
+    let dataByteLength = 0
+    start = chunkID * CHUNCK_SIZE
+    end   = Math.min(chunkID * CHUNCK_SIZE + CHUNCK_SIZE, data.byteLength)
+    for (let i = start; i < end; i++) {
+        resultArrayBufferDataView.setUint8(offset, data[i])
+        offset += 1
+        dataByteLength += 1
     }
-
-    offset += data.byteLength
 
     return resultArrayBuffer
 }
@@ -111,11 +138,9 @@ async function sendArrayBuffer(arrBuff) {
     const totalNumOfChunks = Math.ceil(totalNumOfBytes / CHUNCK_SIZE)
 
     for (let chunkID = 0; chunkID <= totalNumOfChunks; chunkID += 1) {
-        console.log('Send Progress: ', chunkID)
+        console.log('Send Progress: ', `${Math.round(chunkID/totalNumOfChunks * 100)}%`, getPacketStructure(arrBuff, chunkID, totalNumOfChunks))
         await sendChunk(Party.dataChannel, getPacketStructure(arrBuff, chunkID, totalNumOfChunks))
     }
-
-    await sendChunk(Party.dataChannel, arrBuff.slice(arrBuff.byteLength-1,))
 }
 
 function readArrayBufferChunk(arrBuff) {
@@ -123,17 +148,30 @@ function readArrayBufferChunk(arrBuff) {
     const arrBuffDataView = new DataView(arrBuff)
 
     /*
-    * [ How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Chunk Data ]
-    * [ 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | Data ~(15KB - 16 Bytes) ]
+    * [ How Many Bytes is fileID | fileID | How Many Bytes is ChunkID | ChunkID | How Many bytes in ChunkTotal | Total number of chunks | Data ]
+    * [ 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | 7 (constant, 1-Byte) | 7-Byte number | Data ~(15KB - 24 Bytes) ]
     */
-    // [How Many Bytes is ChunkID]
     let offset = 0
-    const chunkIDSizeInBytes = arrBuffDataView.getUint8(0)
-    offset += 1 // 1-Byte constant value
+
+    // [How Many Bytes is fileID]
+    const fileIDSizeInBytes = arrBuffDataView.getUint8(offset)
+    offset += FILEID_SIZE_IN_NUM_OF_BYTES
+
+
+    // [fileID]
+    let fileID = 0
+    for (const i of [...Array(fileIDSizeInBytes).keys()]) {
+        fileID = fileID | (arrBuffDataView.getUint8(i + offset) << (i * BYTE_SIZE_IN_BITS))
+    }
+    offset += fileIDSizeInBytes
+
+    // [How Many Bytes is ChunkID]
+    const chunkIDSizeInBytes = arrBuffDataView.getUint8(offset)
+    offset += CHUNKID_SIZE_IN_NUM_OF_BYTES // 1-Byte constant value
 
 
     // [ChunkID]
-    chunkID = 0
+    let chunkID = 0
     for (const i of [...Array(chunkIDSizeInBytes).keys()]) {
         chunkID = chunkID | (arrBuffDataView.getUint8(i + offset) << (i * BYTE_SIZE_IN_BITS))
     }
@@ -141,10 +179,10 @@ function readArrayBufferChunk(arrBuff) {
 
     // [How Many bytes in ChunkTotal]
     const chunkTotalSizeInBytes = arrBuffDataView.getUint8(offset)
-    offset += 1 // 1-Byte constant value
+    offset += CHUNKTOTAL_SIZE_IN_NUM_OF_BYTES // 1-Byte constant value
 
     // [ChunkTotal]
-    chunkTotal = 0
+    let chunkTotal = 0
     for (const i of [...Array(chunkTotalSizeInBytes).keys()]) {
         chunkTotal = chunkTotal | (arrBuffDataView.getUint8(i + offset) << (i * BYTE_SIZE_IN_BITS))
     }
@@ -155,13 +193,16 @@ function readArrayBufferChunk(arrBuff) {
     const dataSlice = arrBuff.slice(offset, arrBuff.byteLength - 1)
 
     return {
+        "fileID": fileID,
         "chunkID": chunkID,
         "chunkTotal": chunkTotal,
         "data": dataSlice
     }
 }
 
-const ab = new ArrayBuffer(10)
+//Testing
+/*
+const ab = new ArrayBuffer(2812166)
 const dataView = new DataView(ab)
-
-console.log(/*getPacketStructure(ab, 239487, 10), */ readArrayBufferChunk(getPacketStructure(ab, 10129, 123230928030)))
+console.log(readArrayBufferChunk(getPacketStructure(ab, 0, 6)))
+*/

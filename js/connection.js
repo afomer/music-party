@@ -259,34 +259,34 @@ class Connection {
         let audioSource = undefined
         this.dataChannel.onmessage = ({ data }) => {
             console.log('message: ', data)
-            if (data instanceof ArrayBuffer && data.byteLength > 1) {
-                    audioSource = Array.isArray(audioSource) ? audioSource : []
-                    audioSource.push(data)
-            }
+            if (data instanceof ArrayBuffer) {
+                    const chunk = readArrayBufferChunk(data)
+                    audioSource = audioSource || []
+                    audioSource.push(chunk.data)
 
-            if (data instanceof ArrayBuffer && data.byteLength == 1 && audioSource != undefined) {
+                    if (chunk.chunkID == chunk.chunkTotal) {
+                        let bufferSize = audioSource.reduce((y, x) => {
+                            return y + x.byteLength
+                        }, 0)
 
-                let bufferSize = audioSource.reduce((y, x) => {
-                    return y + x.byteLength
-                }, 0)
+                        let audioBuffer = new Uint8Array(bufferSize)
 
-                let audioBuffer = new Uint8Array(bufferSize)
+                        let accumaltor = 0
+                        console.log(audioSource[0], audioSource.byteLength)
+                        for (const i in audioSource) {
+                            accumaltor += i == 0 ? 0 : audioSource[i-1].byteLength
+                            audioBuffer.set(new Uint8Array(audioSource[i]), accumaltor)
+                        }
 
-                let accumaltor = 0
-                console.log(audioSource[0], audioSource.byteLength)
-                for (const i in audioSource) {
-                    accumaltor += i == 0 ? 0 : audioSource[i-1].byteLength
-                    audioBuffer.set(new Uint8Array(audioSource[i]), accumaltor)
+                        PlayerSTATE.audioContext.decodeAudioData(audioBuffer.buffer, (buffer) => {
+                            console.log('buffer: ', buffer)
+                            audioSource = PlayerSTATE.audioContext.createBufferSource();
+                            audioSource.buffer = buffer
+                            audioSource.connect(PlayerSTATE.audioContext.destination)
+                            audioSource.start()
+                        })
+                    }
                 }
-
-                PlayerSTATE.audioContext.decodeAudioData(audioBuffer.buffer, (buffer) => {
-                    console.log('buffer: ', buffer)
-                    audioSource = PlayerSTATE.audioContext.createBufferSource();
-                    audioSource.buffer = buffer
-                    audioSource.connect(PlayerSTATE.audioContext.destination)
-                    audioSource.start()
-                })
-            }
         }
 
         this.makingOffer = true
