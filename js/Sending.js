@@ -7,21 +7,20 @@ const FILEID_SIZE_IN_NUM_OF_BYTES = 1
 const FILEID_VALUE_SIZE_IN_NUM_OF_BYTES = 7
 const BYTE_SIZE_IN_BITS = 8
 const HEADER_SIZE  = (
+    FILEID_SIZE_IN_NUM_OF_BYTES +
+    FILEID_VALUE_SIZE_IN_NUM_OF_BYTES +
     CHUNKID_SIZE_IN_NUM_OF_BYTES +
     CHUNCKID_VALUE_SIZE_IN_NUM_OF_BYTES +
     CHUNKTOTAL_SIZE_IN_NUM_OF_BYTES +
-    CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES +
-    FILEID_SIZE_IN_NUM_OF_BYTES +
-    FILEID_VALUE_SIZE_IN_NUM_OF_BYTES +
-    BYTE_SIZE_IN_BITS
+    CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES
 )
+
 const CHUNCK_SIZE  = BUFFER_LIMIT - HEADER_SIZE
 
 function sendChunk(dataChannel, data) {
 
     function sendChunkHelper(dataChannel, data, resolve) {
         /** if the buffer can afford to put the data chunk, then put it */
-        console.log(dataChannel.bufferedAmount + data.byteLength <= BUFFER_LIMIT)
         if (dataChannel.bufferedAmount + data.byteLength <= BUFFER_LIMIT ) {
             dataChannel.send(data)
             resolve()
@@ -73,7 +72,13 @@ function getPacketStructure(data, chunkID, chunkTotal, fileID = 0) {
         throw Error(`No data provided, instead what's provided: ${chunkTotal}`)
     }
 
-    const totalArrayBufferSize = HEADER_SIZE + CHUNCK_SIZE
+    // Calculate the size of chunk from "data"
+    const dataStart = chunkID * CHUNCK_SIZE
+    const dataEnd   = Math.min(dataStart + CHUNCK_SIZE, data.byteLength)
+    let   dataByteLength = dataEnd - dataStart
+    const totalArrayBufferSize = HEADER_SIZE + dataByteLength
+
+    console.log({totalArrayBufferSize, dataStart, dataEnd, dataByteLength})
 
     let   resultArrayBuffer = new ArrayBuffer(totalArrayBufferSize)
     const resultArrayBufferDataView = new DataView(resultArrayBuffer)
@@ -120,13 +125,11 @@ function getPacketStructure(data, chunkID, chunkTotal, fileID = 0) {
     offset += CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES
 
     // [Data]
-    let dataByteLength = 0
-    start = chunkID * CHUNCK_SIZE
-    end   = Math.min(chunkID * CHUNCK_SIZE + CHUNCK_SIZE, data.byteLength)
-    for (let i = start; i < end; i++) {
-        resultArrayBufferDataView.setUint8(offset, data[i])
+    const dataDataView = new DataView(data)
+    for (let i = dataStart; i < dataEnd; i++) {
+        //console.log(i-dataStart, dataDataView.getUint8(i))
+        resultArrayBufferDataView.setUint8(offset, dataDataView.getUint8(i))
         offset += 1
-        dataByteLength += 1
     }
 
     return resultArrayBuffer
@@ -137,9 +140,11 @@ async function sendArrayBuffer(arrBuff) {
     const totalNumOfBytes  = arrBuff.byteLength
     const totalNumOfChunks = Math.ceil(totalNumOfBytes / CHUNCK_SIZE)
 
-    for (let chunkID = 0; chunkID <= totalNumOfChunks; chunkID += 1) {
-        console.log('Send Progress: ', `${Math.round(chunkID/totalNumOfChunks * 100)}%`, getPacketStructure(arrBuff, chunkID, totalNumOfChunks))
-        await sendChunk(Party.dataChannel, getPacketStructure(arrBuff, chunkID, totalNumOfChunks))
+    for (let chunkID = 0; chunkID < totalNumOfChunks; chunkID += 1) {
+        // Make totalNumOfChunks 0-indexed
+        const arrayBufferPacket = getPacketStructure(arrBuff, chunkID, totalNumOfChunks-1)
+        console.log('Send Progress: ', `${Math.round(chunkID/totalNumOfChunks * 100)}%`, {chunkID, totalNumOfChunks, totalNumOfBytes})
+        await sendChunk(Party.dataChannel, arrayBufferPacket)
     }
 }
 
@@ -190,7 +195,7 @@ function readArrayBufferChunk(arrBuff) {
     offset += chunkTotalSizeInBytes
 
     // [Data]
-    const dataSlice = arrBuff.slice(offset, arrBuff.byteLength - 1)
+    const dataSlice = arrBuff.slice(offset, arrBuff.byteLength)
 
     return {
         "fileID": fileID,
@@ -202,7 +207,8 @@ function readArrayBufferChunk(arrBuff) {
 
 //Testing
 /*
-const ab = new ArrayBuffer(2812166)
-const dataView = new DataView(ab)
-console.log(readArrayBufferChunk(getPacketStructure(ab, 0, 6)))
+const ab = new Uint8Array([
+    12, 14, 15
+])
+console.log(readArrayBufferChunk(getPacketStructure(ab.buffer, 0, 6)), ab.buffer)
 */

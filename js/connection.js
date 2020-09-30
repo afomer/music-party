@@ -259,6 +259,7 @@ class Connection {
         let audioSource = undefined
         this.dataChannel.onmessage = ({ data }) => {
             console.log('message: ', data)
+
             if (data instanceof ArrayBuffer) {
                     const chunk = readArrayBufferChunk(data)
                     audioSource = audioSource || []
