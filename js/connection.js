@@ -256,36 +256,44 @@ class Connection {
             console.log({isDataChannelOpen: this.isDataChannelOpen})
         })
 
+
+
+
         let audioSource = undefined
+        let isAudioChunkPlaying = false
+        let audioQueue  = []
+
+        const playNextAudioChunk = () => {
+
+            if (audioQueue.length < 1) {
+                return
+            }
+
+            const audioBuffer  = audioQueue.pop()
+            isAudioChunkPlaying = true
+            PlayerSTATE.audioContext.decodeAudioData(audioBuffer, (buffer) => {
+                audioSource = PlayerSTATE.audioContext.createBufferSource();
+                audioSource.buffer = buffer
+                audioSource.connect(PlayerSTATE.audioContext.destination)
+                audioSource.onended = () => {
+                    isAudioChunkPlaying = false
+                    console.log(new Date())
+                }
+                audioSource.start()
+
+            })
+        }
+
         this.dataChannel.onmessage = ({ data }) => {
-            console.log('message: ', data)
 
             if (data instanceof ArrayBuffer) {
                     const chunk = readArrayBufferChunk(data)
-                    audioSource = audioSource || []
-                    audioSource.push(chunk.data)
 
-                    if (chunk.chunkID == chunk.chunkTotal) {
-                        let bufferSize = audioSource.reduce((y, x) => {
-                            return y + x.byteLength
-                        }, 0)
 
-                        let audioBuffer = new Uint8Array(bufferSize)
+                    audioQueue.push(chunk.data)
 
-                        let accumaltor = 0
-                        console.log(audioSource[0], audioSource.byteLength)
-                        for (const i in audioSource) {
-                            accumaltor += i == 0 ? 0 : audioSource[i-1].byteLength
-                            audioBuffer.set(new Uint8Array(audioSource[i]), accumaltor)
-                        }
-
-                        PlayerSTATE.audioContext.decodeAudioData(audioBuffer.buffer, (buffer) => {
-                            console.log('buffer: ', buffer)
-                            audioSource = PlayerSTATE.audioContext.createBufferSource();
-                            audioSource.buffer = buffer
-                            audioSource.connect(PlayerSTATE.audioContext.destination)
-                            audioSource.start()
-                        })
+                    if (!isAudioChunkPlaying) {
+                        playNextAudioChunk()
                     }
                 }
         }
