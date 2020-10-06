@@ -187,12 +187,6 @@ async function handleAudioFile(file) {
 
         PlayerSTATE.play(songIdx)
         .then(() => PlayerSTATE.currentSong.getArrayBufferFromFile())
-        .then((audioArrayBuffer) => {
-            console.log(audioArrayBuffer)
-            console.log({ dataChannel: Party.dataChannel, isDataChannelReady: Party.isDataChannelOpen, audioArrayBuffer, byteLength: audioArrayBuffer.byteLength })
-            return audioArrayBuffer
-        })
-        .then((audioArrayBuffer) => sendArrayBuffer(audioArrayBuffer))
 
         // Add duration to audio tag
         $audio_player.setAttribute("duration", duration)

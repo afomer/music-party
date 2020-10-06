@@ -15,6 +15,14 @@ const HEADER_SIZE  = (
     CHUNKTOTAL_VALUE_SIZE_IN_NUM_OF_BYTES
 )
 
+document.addEventListener("NEXT_CHUNKS", async (e) => {
+    console.log("NEXT_CHUNKS: ", e.detail)
+    for (chunk of e.detail.chunks) {
+        await sendArrayBuffer(chunk)
+    }
+})
+
+
 const CHUNCK_SIZE  = BUFFER_LIMIT - HEADER_SIZE
 
 function sendChunk(dataChannel, data) {
@@ -146,6 +154,8 @@ async function sendArrayBuffer(arrBuff) {
         console.log('Send Progress: ', `${Math.round(chunkID/totalNumOfChunks * 100)}%`, {chunkID, totalNumOfChunks, totalNumOfBytes})
         await sendChunk(Party.dataChannel, arrayBufferPacket)
     }
+
+    console.log('\nSuccessfully Sent\n')
 }
 
 function readArrayBufferChunk(arrBuff) {

@@ -20,7 +20,18 @@ class Song {
         }
     }
 
-    getArrayBufferFromFile() {
+    async getChunksArrayFromFile(chunksize=1024) {
+
+        let valuesArray = []
+        const data = await this.getArrayBufferFromFile()
+        for (let i = 0; i < this.file.size; i += chunksize) {
+            valuesArray.push(data.slice(i, i + chunksize))
+        }
+
+        return valuesArray
+    }
+
+    getArrayBufferFromFile(file=this.file) {
 
         return new Promise((resolve, reject) => {
 
@@ -30,7 +41,7 @@ class Song {
                 resolve(reader.result)
             }
 
-            reader.readAsArrayBuffer(this.file)
+            reader.readAsArrayBuffer(file)
         })
     }
 
@@ -58,7 +69,8 @@ class PlayerFSM {
         this.EVENT_TYPES = {
             PLAY: "PLAY",
             PAUSE: "PAUSE",
-            SEEK_TIME_UPDATE: "SEEK_TIME_UPDATE"
+            SEEK_TIME_UPDATE: "SEEK_TIME_UPDATE",
+            NEXT_CHUNKS: "NEXT_CHUNKS"
         }
 
         this.audioContext = new AudioContext()
@@ -70,7 +82,11 @@ class PlayerFSM {
         this.playlist     = []
         this.destinations = [this.audioContext.destination]
         this.gains        = [this.audioContext.createGain()]
-        this.currentSong   = undefined
+        this.currentSong  = undefined
+        this.songChunks   = []
+
+        this.SENDING_INTERVAL_IN_MSECS = 3000 // 3 seconds
+        this.CHUNKS_NUM_TO_SEND_PER_INTERVAL = 5
     }
 
     dispatchEventForListeners(event, detail) {
@@ -183,6 +199,19 @@ class PlayerFSM {
         return ($slider.value/$slider.max) * this.duration * 1000
     }
 
+    handleSendingNextChunks(currentSeekTime) {
+        if (currentSeekTime % this.SENDING_INTERVAL_IN_MSECS == 0 && this.NEXT_CHUNK_INDEX < this.songChunks.length) {
+            this.dispatchEventForListeners(this.EVENT_TYPES.NEXT_CHUNKS, {
+                currentSeekTime: this.currentSeekTime,
+                chunks: this.songChunks.slice(this.NEXT_CHUNK_INDEX, this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL)
+            })
+
+            this.NEXT_CHUNK_INDEX = Math.min(this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL, this.songChunks.length)
+            console.log('new NEXT_CHUNK_INDEX: ', this.NEXT_CHUNK_INDEX)
+        }
+
+    }
+
     setIntervalTimer() {
         const intervalAmountInms = 200
         this.currentSeekTimeInterval = setInterval(async () => {
@@ -199,6 +228,8 @@ class PlayerFSM {
                 currentSeekTime: this.currentSeekTime,
                 duration: this.duration
             })
+
+            this.handleSendingNextChunks(this.currentSeekTime)
 
         }, intervalAmountInms)
     }
@@ -259,11 +290,13 @@ class PlayerFSM {
         this.handleDestinations(this.bufferSource, this.destinations)
 
         const audioArrayBuffer  = await this.currentSong.getArrayBufferFromFile()
+        this.songChunks = await this.currentSong.getChunksArrayFromFile()
 
         return this.audioContext.decodeAudioData(audioArrayBuffer)
                .then((audioBuffer) => {
                     this.bufferSource.buffer = audioBuffer
                     this.duration = this.currentSong.getInfo().duration * 1000
+                    this.NEXT_CHUNK_INDEX = 0 //TODO start from the seektime
                     this.bufferSource.start(0, Math.floor(this.currentSeekTime/1000))
                     this.setIntervalTimer()
                     return audioBuffer
@@ -271,7 +304,10 @@ class PlayerFSM {
     }
 
     async handleStop() {
-        this.currentSeekTime = 0
+        this.currentSeekTime  = 0
+        this.NEXT_CHUNK_INDEX = 0
+        this.songChunks = []
+
         if (this.bufferSource) {
             this.bufferSource.stop(0)
         }

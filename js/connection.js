@@ -135,8 +135,8 @@ class Connection {
             }
         })
 
-        this.socket.on("connect_error", console.error)
-        this.socket.on("connect_fail", console.error)
+        //this.socket.on("connect_error", console.error)
+        //this.socket.on("connect_fail", console.error)
 
         /* (1) Handling Offer/Answer restart, to avoid glare, is as follows:
         The peer with the smaller ID answers the offer
