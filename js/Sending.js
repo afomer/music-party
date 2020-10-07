@@ -150,7 +150,7 @@ async function sendArrayBuffer(arrBuff) {
 
     for (let chunkID = 0; chunkID < totalNumOfChunks; chunkID += 1) {
         // Make totalNumOfChunks 0-indexed
-        const arrayBufferPacket = getPacketStructure(arrBuff, chunkID, totalNumOfChunks-1)
+        const arrayBufferPacket = getPacketStructure(arrBuff, chunkID, totalNumOfChunks-1) // chunkTotal is 0-indexed
         console.log('Send Progress: ', `${Math.round(chunkID/totalNumOfChunks * 100)}%`, {chunkID, totalNumOfChunks, totalNumOfBytes})
         await sendChunk(Party.dataChannel, arrayBufferPacket)
     }

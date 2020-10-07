@@ -135,8 +135,8 @@ class Connection {
             }
         })
 
-        //this.socket.on("connect_error", console.error)
-        //this.socket.on("connect_fail", console.error)
+        this.socket.on("connect_error", console.error)
+        this.socket.on("connect_fail", console.error)
 
         /* (1) Handling Offer/Answer restart, to avoid glare, is as follows:
         The peer with the smaller ID answers the offer
@@ -260,41 +260,35 @@ class Connection {
 
 
         let audioSource = undefined
-        let isAudioChunkPlaying = false
-        let audioQueue  = []
+        let timeStart   = 0
+        let promiseChain = Promise.resolve()
 
-        const playNextAudioChunk = () => {
+        const playNextAudioChunk = async (chunk) => {
 
-            if (audioQueue.length < 1) {
-                return
-            }
+            return new Promise((resolve, reject) => {
 
-            const audioBuffer  = audioQueue.pop()
-            isAudioChunkPlaying = true
-            PlayerSTATE.audioContext.decodeAudioData(audioBuffer, (buffer) => {
-                audioSource = PlayerSTATE.audioContext.createBufferSource();
-                audioSource.buffer = buffer
-                audioSource.connect(PlayerSTATE.audioContext.destination)
-                audioSource.onended = () => {
-                    isAudioChunkPlaying = false
-                    console.log(new Date())
-                }
-                audioSource.start()
-
+                PlayerSTATE.audioContext.decodeAudioData(chunk.data, (buffer) => {
+                    audioSource = PlayerSTATE.audioContext.createBufferSource();
+                    audioSource.buffer = buffer
+                    audioSource.connect(PlayerSTATE.audioContext.destination)
+                    const expectedTime = PlayerSTATE.audioContext.currentTime + audioSource.buffer.duration
+                    audioSource.onended = () => {
+                        console.log('ended: ', {currentTime: PlayerSTATE.audioContext.currentTime, expectedTime}, PlayerSTATE.audioContext.currentTime - expectedTime, 'diff')
+                        console.log({chunkID: chunk.chunkID, chunkTotal: chunk.chunkTotal, timeStart, currentTime: PlayerSTATE.audioContext.currentTime, duration: audioSource.buffer.duration})
+                    }
+                    audioSource.start(timeStart)
+                    timeStart = expectedTime
+                    resolve()
+                }, reject)
             })
+
         }
 
         this.dataChannel.onmessage = ({ data }) => {
 
             if (data instanceof ArrayBuffer) {
                     const chunk = readArrayBufferChunk(data)
-
-
-                    audioQueue.push(chunk.data)
-
-                    if (!isAudioChunkPlaying) {
-                        playNextAudioChunk()
-                    }
+                    promiseChain = promiseChain.then(() => playNextAudioChunk(chunk))
                 }
         }
 

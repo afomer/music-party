@@ -20,7 +20,7 @@ class Song {
         }
     }
 
-    async getChunksArrayFromFile(chunksize=1024) {
+    async getChunksArrayFromFile(chunksize=14000) {
 
         let valuesArray = []
         const data = await this.getArrayBufferFromFile()
@@ -86,7 +86,7 @@ class PlayerFSM {
         this.songChunks   = []
 
         this.SENDING_INTERVAL_IN_MSECS = 3000 // 3 seconds
-        this.CHUNKS_NUM_TO_SEND_PER_INTERVAL = 5
+        this.CHUNKS_NUM_TO_SEND_PER_INTERVAL = 10
     }
 
     dispatchEventForListeners(event, detail) {
@@ -200,15 +200,14 @@ class PlayerFSM {
     }
 
     handleSendingNextChunks(currentSeekTime) {
-        if (currentSeekTime % this.SENDING_INTERVAL_IN_MSECS == 0 && this.NEXT_CHUNK_INDEX < this.songChunks.length) {
-            this.dispatchEventForListeners(this.EVENT_TYPES.NEXT_CHUNKS, {
-                currentSeekTime: this.currentSeekTime,
-                chunks: this.songChunks.slice(this.NEXT_CHUNK_INDEX, this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL)
-            })
 
-            this.NEXT_CHUNK_INDEX = Math.min(this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL, this.songChunks.length)
-            console.log('new NEXT_CHUNK_INDEX: ', this.NEXT_CHUNK_INDEX)
-        }
+        this.dispatchEventForListeners(this.EVENT_TYPES.NEXT_CHUNKS, {
+            currentSeekTime: this.currentSeekTime,
+            chunks: this.songChunks.slice(this.NEXT_CHUNK_INDEX, this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL)
+        })
+
+        this.NEXT_CHUNK_INDEX = Math.min(this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL, this.songChunks.length)
+        console.log('NEXT_CHUNK_INDEX: ', this.NEXT_CHUNK_INDEX)
 
     }
 
@@ -229,7 +228,10 @@ class PlayerFSM {
                 duration: this.duration
             })
 
-            this.handleSendingNextChunks(this.currentSeekTime)
+            if (this.currentSeekTime % this.SENDING_INTERVAL_IN_MSECS == 0 && this.NEXT_CHUNK_INDEX < this.songChunks.length) {
+                this.handleSendingNextChunks(this.currentSeekTime)
+            }
+
 
         }, intervalAmountInms)
     }
@@ -291,6 +293,8 @@ class PlayerFSM {
 
         const audioArrayBuffer  = await this.currentSong.getArrayBufferFromFile()
         this.songChunks = await this.currentSong.getChunksArrayFromFile()
+
+        console.log('totalNumberOf chunks', this.songChunks.length)
 
         return this.audioContext.decodeAudioData(audioArrayBuffer)
                .then((audioBuffer) => {
