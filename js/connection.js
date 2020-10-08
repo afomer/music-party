@@ -261,20 +261,22 @@ class Connection {
 
         let audioSource = undefined
         let timeStart   = 0
+        let chunksQueue = []
+        let totalSize = 0
         let promiseChain = Promise.resolve()
 
-        const playNextAudioChunk = async (chunk) => {
+        const playNextAudioChunk = async (chunkData) => {
 
             return new Promise((resolve, reject) => {
 
-                PlayerSTATE.audioContext.decodeAudioData(chunk.data, (buffer) => {
+                PlayerSTATE.audioContext.decodeAudioData(chunkData, (buffer) => {
                     audioSource = PlayerSTATE.audioContext.createBufferSource();
                     audioSource.buffer = buffer
                     audioSource.connect(PlayerSTATE.audioContext.destination)
                     const expectedTime = PlayerSTATE.audioContext.currentTime + audioSource.buffer.duration
                     audioSource.onended = () => {
                         console.log('ended: ', {currentTime: PlayerSTATE.audioContext.currentTime, expectedTime}, PlayerSTATE.audioContext.currentTime - expectedTime, 'diff')
-                        console.log({chunkID: chunk.chunkID, chunkTotal: chunk.chunkTotal, timeStart, currentTime: PlayerSTATE.audioContext.currentTime, duration: audioSource.buffer.duration})
+                        console.log({timeStart, currentTime: PlayerSTATE.audioContext.currentTime, duration: audioSource.buffer.duration})
                     }
                     audioSource.start(timeStart)
                     timeStart = expectedTime
@@ -288,7 +290,36 @@ class Connection {
 
             if (data instanceof ArrayBuffer) {
                     const chunk = readArrayBufferChunk(data)
-                    promiseChain = promiseChain.then(() => playNextAudioChunk(chunk))
+                    chunksQueue.push(chunk)
+                    totalSize += chunk.data.byteLength
+
+                    console.log({totalSize})
+
+                    if (totalSize >= 84000) {
+                        const accumlator = chunksQueue.reduce((res, elem) => res + elem.data.byteLength, 0)
+                        const data = new ArrayBuffer(accumlator)
+
+                        // [Data]
+                        const dataDataView = new DataView(data)
+                        let   offset = 0
+
+                        while (chunksQueue.length > 0) {
+                            const queuedChunk = chunksQueue.pop()
+                            console.log({ accumlator , offset, queuedChunk})
+                            const chunkView = new DataView(queuedChunk.data)
+                            totalSize -= queuedChunk.data.byteLength
+
+
+                            for (let i = 0; i < queuedChunk.data.byteLength; i++) {
+                                //console.log(i-dataStart, dataDataView.getUint8(i))
+                                dataDataView.setUint8(offset, chunkView.getUint8(i))
+                                offset += 1
+                            }
+                        }
+
+                        promiseChain = promiseChain.then(() => playNextAudioChunk(data))
+                    }
+
                 }
         }
 
