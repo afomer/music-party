@@ -263,7 +263,19 @@ class Connection {
         let timeStart   = 0
         let chunksQueue = []
         let totalSize = 0
+        let isPlaying = false
         let promiseChain = Promise.resolve()
+
+        const createAudioChunk = (chunkData) => {
+            return new Promise((resolve, reject) => {
+                PlayerSTATE.audioContext.decodeAudioData(chunkData, (buffer) => {
+                    const audioSource = PlayerSTATE.audioContext.createBufferSource();
+                    audioSource.buffer = buffer
+                    audioSource.connect(PlayerSTATE.audioContext.destination)
+                    resolve({size: chunkData.byteLength, audioSource})
+                }, reject)
+            })
+        }
 
         const playNextAudioChunk = async (chunkData) => {
 
@@ -290,34 +302,41 @@ class Connection {
 
             if (data instanceof ArrayBuffer) {
                     const chunk = readArrayBufferChunk(data)
-                    chunksQueue.push(chunk)
                     totalSize += chunk.data.byteLength
+                    chunksQueue.push(createAudioChunk(chunk.data))
 
-                    console.log({totalSize})
+                    if (totalSize >= 112000 && !isPlaying) {
 
-                    if (totalSize >= 84000) {
-                        const accumlator = chunksQueue.reduce((res, elem) => res + elem.data.byteLength, 0)
-                        const data = new ArrayBuffer(accumlator)
-
-                        // [Data]
-                        const dataDataView = new DataView(data)
-                        let   offset = 0
-
-                        while (chunksQueue.length > 0) {
-                            const queuedChunk = chunksQueue.pop()
-                            console.log({ accumlator , offset, queuedChunk})
-                            const chunkView = new DataView(queuedChunk.data)
-                            totalSize -= queuedChunk.data.byteLength
+                        isPlaying = true
+                        console.log({audioChunksLen: chunksQueue.length, totalSize})
+                        const chunksQueuePromises = chunksQueue
+                        chunksQueue = []
+                        totalSize   = 0
+                        Promise.all(chunksQueuePromises)
+                        .then((audioChunks) => {
+                            let offset = 0
 
 
-                            for (let i = 0; i < queuedChunk.data.byteLength; i++) {
-                                //console.log(i-dataStart, dataDataView.getUint8(i))
-                                dataDataView.setUint8(offset, chunkView.getUint8(i))
-                                offset += 1
+                            while (audioChunks.length > 0) {
+                                let {size, audioSource} = audioChunks.shift()
+                                const queuedChunk = audioSource
+
+                                if (audioChunks.length == 0) {
+                                    queuedChunk.onended = () => {
+                                        isPlaying = false
+                                    }
+                                }
+
+                                const duration = queuedChunk.buffer.duration
+                                queuedChunk.start(PlayerSTATE.audioContext.currentTime + offset)
+                                offset += duration
+
+                                console.log({cumulativeDuration: offset, duration})
+
                             }
-                        }
+                            console.log({totalDuration: offset})
+                        })
 
-                        promiseChain = promiseChain.then(() => playNextAudioChunk(data))
                     }
 
                 }
