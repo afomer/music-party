@@ -246,7 +246,7 @@ class Connection {
             this.makingOffer = false
         }
 
-        this.dataChannel = this.remotePeerConnection.createDataChannel("datach", { reliable: true })
+        this.dataChannel = this.remotePeerConnection.createDataChannel("datach", { protocol: "tcp" })
         this.dataChannel.addEventListener("open", event => {
             this.isDataChannelOpen = true
             console.log({ isDataChannelOpen : this.isDataChannelOpen})
@@ -305,7 +305,7 @@ class Connection {
                     totalSize += chunk.data.byteLength
                     chunksQueue.push(createAudioChunk(chunk.data))
 
-                    if (totalSize >= 112000 && !isPlaying) {
+                    if (totalSize >= 14000 * 2 && !isPlaying) {
 
                         isPlaying = true
                         console.log({audioChunksLen: chunksQueue.length, totalSize})

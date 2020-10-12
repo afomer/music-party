@@ -83,10 +83,12 @@ class PlayerFSM {
         this.destinations = [this.audioContext.destination]
         this.gains        = [this.audioContext.createGain()]
         this.currentSong  = undefined
+        this.audioArrayBuffer = null
         this.songChunks   = []
 
-        this.SENDING_INTERVAL_IN_MSECS = 3000 // 3 seconds
-        this.CHUNKS_NUM_TO_SEND_PER_INTERVAL = 10
+        this.SENDING_INTERVAL_IN_MSECS = 500 // 0.5 seconds
+        this.CHUNKS_NUM_TO_SEND_PER_INTERVAL = 6 // 1 chunk = 0.5 seconds
+        this.SEGMENT_SIZE = 14000 * 4 // ~2 second
     }
 
     dispatchEventForListeners(event, detail) {
@@ -203,16 +205,18 @@ class PlayerFSM {
 
         this.dispatchEventForListeners(this.EVENT_TYPES.NEXT_CHUNKS, {
             currentSeekTime: this.currentSeekTime,
-            chunks: this.songChunks.slice(this.NEXT_CHUNK_INDEX, this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL)
+            chunks: [this.audioArrayBuffer.slice(this.NEXT_CHUNK_INDEX, this.NEXT_CHUNK_INDEX + this.SEGMENT_SIZE)]
         })
 
-        this.NEXT_CHUNK_INDEX = Math.min(this.NEXT_CHUNK_INDEX + this.CHUNKS_NUM_TO_SEND_PER_INTERVAL, this.songChunks.length)
+        this.NEXT_CHUNK_INDEX = Math.min(this.NEXT_CHUNK_INDEX + this.SEGMENT_SIZE, this.audioArrayBuffer.byteLength)
         console.log('NEXT_CHUNK_INDEX: ', this.NEXT_CHUNK_INDEX)
 
     }
 
     setIntervalTimer() {
         const intervalAmountInms = 200
+        // Sending intial seconds
+        this.handleSendingNextChunks(this.currentSeekTime)
         this.currentSeekTimeInterval = setInterval(async () => {
             const newTime = this.currentSeekTime + intervalAmountInms
             if (newTime <= this.duration) {
@@ -228,7 +232,7 @@ class PlayerFSM {
                 duration: this.duration
             })
 
-            if (this.currentSeekTime % this.SENDING_INTERVAL_IN_MSECS == 0 && this.NEXT_CHUNK_INDEX < this.songChunks.length) {
+            if (this.currentSeekTime % this.SENDING_INTERVAL_IN_MSECS == 0 && this.NEXT_CHUNK_INDEX < this.audioArrayBuffer.byteLength) {
                 this.handleSendingNextChunks(this.currentSeekTime)
             }
 
@@ -292,6 +296,7 @@ class PlayerFSM {
         this.handleDestinations(this.bufferSource, this.destinations)
 
         const audioArrayBuffer  = await this.currentSong.getArrayBufferFromFile()
+        this.audioArrayBuffer = audioArrayBuffer.slice()
         this.songChunks = await this.currentSong.getChunksArrayFromFile()
 
         console.log('totalNumberOf chunks', this.songChunks.length)
