@@ -1,4 +1,5 @@
 var AudioContext = AudioContext || window.AudioContext || window.webkitAudioContext
+var tag = null
 
 class Song {
 
@@ -202,6 +203,8 @@ class PlayerFSM {
     }
 
     handleSendingNextChunks(currentSeekTime) {
+
+        return;
 
         this.dispatchEventForListeners(this.EVENT_TYPES.NEXT_CHUNKS, {
             currentSeekTime: this.currentSeekTime,

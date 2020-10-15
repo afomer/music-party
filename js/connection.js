@@ -35,6 +35,7 @@ class Connection {
         this.LISTENER = "LISTENER"
         this.HOST = "HOST"
         this.IDLE = "IDLE"
+        this.audioSource = null
 
         // The events For event Listeners
         this.EVENT_TYPES = {
@@ -232,6 +233,16 @@ class Connection {
             console.log('signalingState:', this.remotePeerConnection.signalingState, '- ConnectionState:', this.remotePeerConnection.connectionState)
         }
 
+        this.remotePeerConnection.ontrack = ({ track, streams }) => {
+            tag.srcObject = streams[0]
+            tag.play()
+            //const song = new Audio()
+            //song.srcObject = streams[0]
+            //song.play()
+            //console.log(song, song.srcObject)
+
+        }
+
         this.remotePeerConnection.onicecandidate = (event) => {
             if (event.candidate) {
                 this.socket.emit("message", { to: partyID,  data: { candidate: event.candidate } })
@@ -255,9 +266,6 @@ class Connection {
             this.isDataChannelOpen = false
             console.log({isDataChannelOpen: this.isDataChannelOpen})
         })
-
-
-
 
         let audioSource = undefined
         let timeStart   = 0
@@ -397,6 +405,9 @@ class Connection {
                         }
                         this.dataChannel.onerror = console.log
                     }
+
+                    const remoteStream = PlayerSTATE.addRemoteDestination().stream
+                    peerConnection.addStream(remoteStream)
 
                 // Take care of ICE candidates
                 peerConnection.onicecandidate = (event) => {
