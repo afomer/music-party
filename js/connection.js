@@ -75,17 +75,19 @@ class Connection {
 
             case this.STATES.IDLE:
 
-                if (this.CURRENT_STATE != "IDLE") {
-                    throw new Error('illegal transition from', this.CURRENT_STATE, 'to', newSTATE)
+                if (this.CURRENT_STATE == "IDLE") {
+                    throw new Error(`illegal transition from ${this.CURRENT_STATE} to ${newSTATE}`)
                 } else {
                     if (this.listeners && typeof this.listeners == "object") {
                         for (const i in this.listeners) {
+                            console.log(this.listeners[i])
                             this.listeners[i].pc.close()
                         }
                     }
                     this.listeners = {}
                     this.socket.off("listener")
                     this.remotePeerConnection = null
+                    this.CURRENT_STATE = this.STATES.IDLE
                 }
                 break;
         }
@@ -118,22 +120,32 @@ class Connection {
         } catch (err) {}
     }
 
-    init() {
+    removeListener(id) {
+        this.listeners?.[id]?.pc?.close()
+    }
 
+    handleLeave(id=undefined) {
+        switch(this.CURRENT_STATE) {
+            case this.STATES.LISTENER:
+                this.transitionToState(this.STATES.IDLE)
+                alert("Host is disconnected or unavailable")
+                break;
+
+            case this.STATES.HOST:
+                this.removeListener(id)
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    init() {
         // Getting an ID from the server
         this.socket.on('init', ({ id }) => this.ID = id)
         this.socket.on("disconnected", ({ id }) => {
-            switch(this.CURRENT_STATE) {
-                case this.STATES.LISTENER:
-                    this.remotePeerConnection = null
-                    break;
-
-                case this.STATES.HOST:
-                    this.listeners[id] = null
-
-                default:
-                    break;
-            }
+            this.handleLeave(id)
+            console.log("disconnected", id)
         })
 
         this.socket.on("connect_error", console.error)
@@ -151,7 +163,7 @@ class Connection {
 
             console.log('from: ', from, 'recieved: ', data)
 
-            const remotePeer = this.CURRENT_STATE == this.STATES.HOST ? this.listeners[from] : this.remotePeerConnection
+            const remotePeer = this.CURRENT_STATE == this.STATES.HOST ? this.listeners[from].pc : this.remotePeerConnection
 
             // If the remote peer is not recognized, ignore the message
             if (remotePeer == null) {
@@ -241,6 +253,12 @@ class Connection {
             //song.play()
             //console.log(song, song.srcObject)
 
+        }
+
+        this.remotePeerConnection.oniceconnectionstatechange = () => {
+            if (this.remotePeerConnection.iceConnectionState == 'disconnected') {
+                this.handleLeave()
+            }
         }
 
         this.remotePeerConnection.onicecandidate = (event) => {
@@ -376,16 +394,7 @@ class Connection {
     }
 
     async leave() {
-        if (this.listeners != undefined) {
-            for (const i in this.listeners) {
-                this.listeners[i].close()
-            }
-        }
-
-        if (this.remotePeerConnection != undefined) {
-            this.remotePeerConnection.close()
-        }
-
+        this.transitionToState(this.STATES.IDLE)
     }
 
     async handle_create() {
@@ -417,6 +426,12 @@ class Connection {
                     }
                 }
 
+                peerConnection.oniceconnectionstatechange = () => {
+                    if (peerConnection.iceConnectionState == 'disconnected') {
+                        this.handleLeave(from)
+                    }
+                }
+
                 peerConnection.onsignalingstatechange = (e) => {
                     console.log('signalingState:', peerConnection.signalingState, 'connectionState: ', peerConnection.connectionState, '- from:', from)
                 }
@@ -432,7 +447,9 @@ class Connection {
                 }
 
                 // Answer the SDP description offer
-                this.listeners[from] = peerConnection
+                this.listeners[from] = {
+                    pc: peerConnection
+                }
                 await peerConnection.setRemoteDescription(description)
                 const answer = await peerConnection.createAnswer()
                 await peerConnection.setLocalDescription(answer)

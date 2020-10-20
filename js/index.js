@@ -14,6 +14,7 @@ $slider.value = 0
 $slider.step = 1
 $slider.min = 0
 $slider.max = 100
+
 /***/
 
 function addPlayerInit() {
@@ -156,11 +157,8 @@ function songElementFn(title, artist, duration) {
 
 async function handleAudioFile(file) {
 
-    window.PlayerSTATE
-
-    const tags = await getMetadata(file)
-
-    const title  = tags['title'] || file['name']
+    const tags     = await getMetadata(file)
+    const title    = tags['title'] || file['name']
     const duration = await getAudioFileDuration(file)
 
     const img    = (tags['picture'] && tags['picture']['data']) ?  "data:image/png;base64," + bytesArrToBase64(tags['picture']['data']) : DEFAULT_PIC
@@ -206,14 +204,13 @@ function activateAddSongButton() {
         }
     }
 
-
     inputFileElement.oninput = (e) => {
         // Add all selected files to the array list
         for (const file of e.target.files) {
             if (file.type.match("audio*")) {
                 handleAudioFile(file)
             } else {
-                // TODO: show a notification of not showing
+                alert(`File ${file.name} is not an audio file`)
             }
         }
     }
@@ -257,7 +254,6 @@ function activatePlayButton() {
             } else {
                 playPromise = togglePlayButton()
             }
-
         }
     }
 
@@ -308,9 +304,7 @@ function onVolumeChange(e) {
     }
 }
 
-
 function onMutationChange() {
-    console.log('state')
 
     // For Host
     if ($room_create && $room_create.getAttribute("state") == "connected"){
@@ -327,15 +321,21 @@ function onMutationChange() {
     }
 
     // For Listeners
-    if ($room && $room.getAttribute("state") == "connected"){
+    console.log(Party.CURRENT_STATE == Party.STATES.LISTENER, {currstate: Party.CURRENT_STATE, LISTENER: Party.STATES.LISTENER}, "<<<<")
+    if ($room && Party.CURRENT_STATE == Party.STATES.LISTENER){
         $room.className = 'button-style-leave'
         $room.textContent = CONNECTED_LISTENER_TEXT
-    } else if ($room && $room.getAttribute("state") == "unconnected") {
+    } else if ($room && Party.CURRENT_STATE == Party.STATES.IDLE) {
         $room.className = 'button-style'
         $room.textContent = UNCONNECTED_LISTENER_TEXT
     }
 
 }
+
+document.addEventListener(Party.EVENT_TYPES.STATE_CHANGE, (e) => {
+    console.log(e.state)
+    onMutationChange()
+})
 
 /*
 *
@@ -354,6 +354,7 @@ const $room_create = document.getElementById('room-create')
 let is_in_room = false
 
 main()
+
 function main() {
 
     // A workaround to turn WebAudio on the browser, once the screen is touched/clicked
@@ -381,12 +382,15 @@ function main() {
     document.getElementById("room-input-form").onsubmit = (e) => {
         e.preventDefault()
         const partyID = document.getElementById('room-input').value
+        // TODO: toggle between join and leave
         Party.join(partyID)
+
         return false;
     }
 
     const observer = new MutationObserver(onMutationChange)
 
+    // TODO: Better handle of UI from state change events for both host and listeners
     if ($room_create) {
         $room_create.onclick = async (e) => {
             if (!is_in_room) {
@@ -402,10 +406,16 @@ function main() {
                     alert('Not connected to the Server')
                 }
             } else {
+                document.getElementById("party-title").textContent = `Music Party`
                 $room_create.setAttribute("connectionID", Party.ID)
                 $room_create.setAttribute("state", "unconnected")
-                Party.leave()
+                document.getElementById("peer-type").className = ""
+                document.getElementById("peer-type").textContent = ""
+                $room.className = "button-style-leave"
+
+                await Party.leave()
                 is_in_room = false
+                console.log('should\'ve left the room')
             }
         }
 
@@ -416,6 +426,7 @@ function main() {
         })
 
     }
+    // TODO Combine listener in the same code
     if ($room) {
         observer.observe($room, {
             attributes: true,
