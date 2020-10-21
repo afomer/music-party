@@ -48,8 +48,6 @@ class Connection {
 
     async transitionToState(newSTATE, ...args) {
 
-        console.log(this.CURRENT_STATE, newSTATE)
-
         switch(newSTATE) {
             case this.STATES.LISTENER:
 
@@ -256,7 +254,8 @@ class Connection {
         }
 
         this.remotePeerConnection.oniceconnectionstatechange = () => {
-            if (this.remotePeerConnection.iceConnectionState == 'disconnected') {
+            console.log({iceconnectionstate: this.remotePeerConnection.iceConnectionState})
+            if (this.remotePeerConnection.iceConnectionState == 'disconnected' || this.remotePeerConnection.iceConnectionState == "new") {
                 this.handleLeave()
             }
         }
@@ -427,7 +426,7 @@ class Connection {
                 }
 
                 peerConnection.oniceconnectionstatechange = () => {
-                    if (peerConnection.iceConnectionState == 'disconnected') {
+                    if (peerConnection.iceConnectionState == 'disconnected' || peerConnection.iceConnectionState == "new") {
                         this.handleLeave(from)
                     }
                 }

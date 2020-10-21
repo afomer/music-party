@@ -4,6 +4,12 @@
 // Global Variables
 
 const DEFAULT_PIC = 'https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg'
+const UNCONNECTED_HOST_TEXT = "Start a Party 🎉"
+const CONNECTED_HOST_TEXT = "Close the Party"
+const UNCONNECTED_LISTENER_TEXT = "Join a Party 🎉"
+const CONNECTED_LISTENER_TEXT = "Leave the Party"
+const $room = document.getElementById('room-join')
+const $room_create = document.getElementById('room-create')
 const $slider = document.getElementById('slider')
 const $volume_range = document.getElementById('volume-range')
 const $audio_player = document.getElementById('audio-player')
@@ -304,56 +310,93 @@ function onVolumeChange(e) {
     }
 }
 
-function onMutationChange() {
+function onPartyStateChange() {
 
     // For Host
-    if ($room_create && $room_create.getAttribute("state") == "connected"){
-        $room_create.className = 'button-style-leave'
-        $room_create.textContent = CONNECTED_HOST_TEXT
-        $room.style.visibility = 'hidden'
-        document.getElementById('room-input-form').style.visibility = 'hidden'
-        console.log('>', document.getElementById('room-input-form').style.visibility)
-    } else if ($room_create && $room_create.getAttribute("state") == "unconnected") {
-        $room_create.className = 'button-style'
-        $room_create.textContent = UNCONNECTED_HOST_TEXT
-        $room.style.visibility = 'visible'
-        document.getElementById('room-input-form').style.visibility = 'visible'
-    }
-
-    // For Listeners
-    console.log(Party.CURRENT_STATE == Party.STATES.LISTENER, {currstate: Party.CURRENT_STATE, LISTENER: Party.STATES.LISTENER}, "<<<<")
-    if ($room && Party.CURRENT_STATE == Party.STATES.LISTENER){
-        $room.className = 'button-style-leave'
-        $room.textContent = CONNECTED_LISTENER_TEXT
-    } else if ($room && Party.CURRENT_STATE == Party.STATES.IDLE) {
-        $room.className = 'button-style'
-        $room.textContent = UNCONNECTED_LISTENER_TEXT
+    if ($room_create) {
+        if ($room_create && Party.CURRENT_STATE == Party.STATES.HOST){
+            $room_create.className = 'button-style-leave'
+            $room_create.textContent = CONNECTED_HOST_TEXT
+            $room.style.visibility = 'hidden'
+            document.getElementById('room-input-form').style.visibility = 'hidden'
+        } else if ($room_create &&  Party.CURRENT_STATE == Party.STATES.IDLE) {
+            $room_create.className = 'button-style'
+            $room_create.textContent = UNCONNECTED_HOST_TEXT
+            $room.style.visibility = 'visible'
+            document.getElementById('room-input-form').style.visibility = 'visible'
+        }
+    } else {
+        // For Listeners
+        if ($room && Party.CURRENT_STATE == Party.STATES.LISTENER){
+            $room.className = 'button-style-leave'
+            $room.textContent = CONNECTED_LISTENER_TEXT
+            document.getElementById("room-input").style.visibility = 'hidden'
+        } else if ($room && Party.CURRENT_STATE == Party.STATES.IDLE) {
+            $room.className = 'button-style'
+            $room.textContent = UNCONNECTED_LISTENER_TEXT
+            document.getElementById("room-input").style.visibility = 'visible'
+        }
     }
 
 }
 
-document.addEventListener(Party.EVENT_TYPES.STATE_CHANGE, (e) => {
-    console.log(e.state)
-    onMutationChange()
-})
+
+
+function handlePartySession() {
+
+    document.addEventListener(Party.EVENT_TYPES.STATE_CHANGE, (e) => {
+        console.log({NEW_STATE: e.detail.STATE})
+        onPartyStateChange()
+    })
+
+    // TODO: Add animation for the listener based on the waves amplitude of the audio
+    document.getElementById("room-input-form").onsubmit = (e) => {
+        if (Party.CURRENT_STATE == Party.STATES.IDLE) {
+            const partyID = document.getElementById('room-input').value
+            document.getElementById('room-input').value = ''
+            Party.join(partyID)
+
+        } else {
+            Party.leave()
+        }
+
+        e.preventDefault()
+        return false;
+    }
+
+    if ($room_create) {
+        $room_create.onclick = async (e) => {
+            if (Party.CURRENT_STATE == Party.STATES.IDLE) {
+                const createdParty = await Party.create()
+                if (createdParty) {
+                    document.getElementById("party-title").textContent = `🎉 Party ID: ${Party.ID}`
+                    $room_create.setAttribute("connectionID", Party.ID)
+                    $room_create.setAttribute("state", "connected")
+                    document.getElementById("peer-type").className = "highlight"
+                    document.getElementById("peer-type").textContent = "Host"
+                } else {
+                    alert('Not connected to the Server')
+                }
+            } else {
+                document.getElementById("party-title").textContent = `Music Party`
+                $room_create.setAttribute("connectionID", Party.ID)
+                $room_create.setAttribute("state", "unconnected")
+                document.getElementById("peer-type").className = ""
+                document.getElementById("peer-type").textContent = ""
+                $room.className = "button-style-leave"
+
+                await Party.leave()
+            }
+        }
+
+    }
+}
 
 /*
 *
 * Main Function Call
 *
 */
-const UNCONNECTED_HOST_TEXT = "Start a Party 🎉"
-const CONNECTED_HOST_TEXT = "Close the Party"
-
-const UNCONNECTED_LISTENER_TEXT = "Join a Party 🎉"
-const CONNECTED_LISTENER_TEXT = "Leave the Party"
-
-const $room = document.getElementById('room-join')
-const $room_create = document.getElementById('room-create')
-
-let is_in_room = false
-
-main()
 
 function main() {
 
@@ -377,62 +420,7 @@ function main() {
     activateAddSongButton()
     activatePlayButton()
     activateVolumeSlider()
-
-
-    document.getElementById("room-input-form").onsubmit = (e) => {
-        e.preventDefault()
-        const partyID = document.getElementById('room-input').value
-        // TODO: toggle between join and leave
-        Party.join(partyID)
-
-        return false;
-    }
-
-    const observer = new MutationObserver(onMutationChange)
-
-    // TODO: Better handle of UI from state change events for both host and listeners
-    if ($room_create) {
-        $room_create.onclick = async (e) => {
-            if (!is_in_room) {
-                const createdParty = await Party.create()
-                if (createdParty) {
-                    document.getElementById("party-title").textContent = `🎉 Party ID: ${Party.ID}`
-                    $room_create.setAttribute("connectionID", Party.ID)
-                    $room_create.setAttribute("state", "connected")
-                    document.getElementById("peer-type").className = "highlight"
-                    document.getElementById("peer-type").textContent = "Host"
-                    is_in_room = true
-                } else {
-                    alert('Not connected to the Server')
-                }
-            } else {
-                document.getElementById("party-title").textContent = `Music Party`
-                $room_create.setAttribute("connectionID", Party.ID)
-                $room_create.setAttribute("state", "unconnected")
-                document.getElementById("peer-type").className = ""
-                document.getElementById("peer-type").textContent = ""
-                $room.className = "button-style-leave"
-
-                await Party.leave()
-                is_in_room = false
-                console.log('should\'ve left the room')
-            }
-        }
-
-        observer.observe($room_create, {
-            attributes: true,
-            attributeFilter: ['state'],
-            characterData: false
-        })
-
-    }
-    // TODO Combine listener in the same code
-    if ($room) {
-        observer.observe($room, {
-            attributes: true,
-            attributeFilter: ['state'],
-            characterData: false
-        })
-    }
-
+    handlePartySession()
 }
+
+main()

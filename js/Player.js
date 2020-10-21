@@ -71,7 +71,8 @@ class PlayerFSM {
             PLAY: "PLAY",
             PAUSE: "PAUSE",
             SEEK_TIME_UPDATE: "SEEK_TIME_UPDATE",
-            NEXT_CHUNKS: "NEXT_CHUNKS"
+            NEXT_CHUNKS: "NEXT_CHUNKS",
+            LISTENERS: "LISTENERS"
         }
 
         this.audioContext = new AudioContext()
@@ -299,8 +300,8 @@ class PlayerFSM {
         this.handleDestinations(this.bufferSource, this.destinations)
 
         const audioArrayBuffer  = await this.currentSong.getArrayBufferFromFile()
-        this.audioArrayBuffer = audioArrayBuffer.slice()
-        this.songChunks = await this.currentSong.getChunksArrayFromFile()
+        // this.audioArrayBuffer = audioArrayBuffer.slice()
+        // this.songChunks = await this.currentSong.getChunksArrayFromFile()
 
         console.log('totalNumberOf chunks', this.songChunks.length)
 
