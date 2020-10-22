@@ -243,9 +243,64 @@ class Connection {
             console.log('signalingState:', this.remotePeerConnection.signalingState, '- ConnectionState:', this.remotePeerConnection.connectionState)
         }
 
+
+        const audioSrc = PlayerSTATE.audioContext.createMediaElementSource(tag)
+        const analyser = PlayerSTATE.audioContext.createAnalyser()
+        analyser.minDecibels = -80
+        analyser.maxDecibels = -10
+        analyser.smoothingTimeConstant = 0.85
+        analyser.fftSize = 64;
+        audioSrc.connect(analyser)
+
+        let frequencyData = new Uint8Array(analyser.frequencyBinCount)
+        let barsArr = [];
+        let height = 360;
+        let width = 360;
+
+        let init = function(config) {
+            let count = config.count;
+            let width = config.width;
+            let barWidth = (width/count) >> 0;
+            height = config.height;
+
+            let barsEl = document.getElementById('bars');
+            for(let i = 0; i < count; i++) {
+                let nunode = document.createElement('div');
+                nunode.classList.add('bar');
+                nunode.style.width = barWidth + 'px';
+                nunode.style.left = (barWidth * i) + 'px';
+                barsArr.push(nunode);
+                barsEl.appendChild(nunode);
+            }
+            console.log(barsArr)
+        };
+
+        init({
+            width: width,
+            height: height,
+            count: analyser.frequencyBinCount
+        })
+
+        function renderFrame() {
+            analyser.getByteFrequencyData(frequencyData)
+            let max = 256;
+            for(let i = 0; i < barsArr.length; i++) {
+                if (frequencyData[i] != 0) {
+                    console.log('val: ', frequencyData[i])
+                }
+            }
+            for(let i = 0; i < barsArr.length; i++) {
+                let bar = barsArr[i];
+                bar.style.height = ((frequencyData[i]/max)*150)+'px';
+            }
+            requestAnimationFrame(renderFrame)
+        }
+
+
         this.remotePeerConnection.ontrack = ({ track, streams }) => {
             tag.srcObject = streams[0]
             tag.play()
+            renderFrame()
             //const song = new Audio()
             //song.srcObject = streams[0]
             //song.play()
