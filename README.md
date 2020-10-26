@@ -1,7 +1,12 @@
-# Create Music Parties across devices!
 
-*Local Music Files + Music Queue + WebRTC !*
+<p align="center">
+    <img src="images/mpjs.png" alt="MusicParty.js Cover Image">
+</p>
 
-Play/Pause from space bar
+<h1 align="center">
+Cross-Platform Music Parties in the Browser 🎧
+</h1>
 
-Next/Prev from back and forward arrow keys
+<p align="center">
+Cross-Platform Music Parties in the Browser using <strong>WebRTC</strong>, and <strong>Web Audio API</strong>!
+</p>

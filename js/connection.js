@@ -244,35 +244,39 @@ class Connection {
         }
 
 
-        const audioSrc = PlayerSTATE.audioContext.createMediaElementSource(tag)
-        const analyser = PlayerSTATE.audioContext.createAnalyser()
-        analyser.minDecibels = -80
-        analyser.maxDecibels = -10
-        analyser.smoothingTimeConstant = 0.85
-        analyser.fftSize = 64;
-        audioSrc.connect(analyser)
+        let audioSrc;
+        let analyser = PlayerSTATE.audioContext.createAnalyser()
+        analyser.fftSize = 64
+        analyser.connect(PlayerSTATE.audioContext.destination)
 
         let frequencyData = new Uint8Array(analyser.frequencyBinCount)
-        let barsArr = [];
+        let circles = [];
         let height = 360;
         let width = 360;
 
         let init = function(config) {
             let count = config.count;
-            let width = config.width;
-            let barWidth = (width/count) >> 0;
-            height = config.height;
 
-            let barsEl = document.getElementById('bars');
-            for(let i = 0; i < count; i++) {
-                let nunode = document.createElement('div');
-                nunode.classList.add('bar');
-                nunode.style.width = barWidth + 'px';
-                nunode.style.left = (barWidth * i) + 'px';
-                barsArr.push(nunode);
-                barsEl.appendChild(nunode);
+            const center = width/2;
+            const circleMaxWidth = (width*0.5) >> 0;
+            const radius = circleMaxWidth*0.2;
+            const twopi = 2 * Math.PI;
+            const change = twopi/count;
+            let circlesEl = document.getElementById('circular');
+            for(var i = 0; i < twopi; i+=change ){
+                var node = document.createElement('div');
+                node.style.left = (center + radius*Math.cos(i)) + 'px';
+                node.style.top = (center + radius*Math.sin(i)) + 'px';
+                node.style.webkitTransform = node.style.mozTransform = node.style.transform = 'rotate(' + (i-(Math.PI/2)) + 'rad)';
+
+                node.style.webkitTransformOrigin = node.style.mozTransformOrigin = node.style.transformOrigin = '0px 0px';
+                node.classList.add('circularBar');
+                circles.push(node);
+                circlesEl.appendChild(node);
             }
-            console.log(barsArr)
+            const centerEl = document.createElement('div');
+            centerEl.id = 'circularCenter';
+            circlesEl.appendChild(centerEl);
         };
 
         init({
@@ -284,28 +288,20 @@ class Connection {
         function renderFrame() {
             analyser.getByteFrequencyData(frequencyData)
             let max = 256;
-            for(let i = 0; i < barsArr.length; i++) {
-                if (frequencyData[i] != 0) {
-                    console.log('val: ', frequencyData[i])
-                }
-            }
-            for(let i = 0; i < barsArr.length; i++) {
-                let bar = barsArr[i];
+            for(let i = 0; i < circles.length; i++) {
+                let bar = circles[i];
                 bar.style.height = ((frequencyData[i]/max)*150)+'px';
             }
             requestAnimationFrame(renderFrame)
         }
 
-
         this.remotePeerConnection.ontrack = ({ track, streams }) => {
             tag.srcObject = streams[0]
-            tag.play()
-            renderFrame()
-            //const song = new Audio()
-            //song.srcObject = streams[0]
-            //song.play()
-            //console.log(song, song.srcObject)
+            tag.muted = true
 
+            audioSrc = PlayerSTATE.audioContext.createMediaStreamSource(streams[0])
+            audioSrc.connect(analyser)
+            renderFrame()
         }
 
         this.remotePeerConnection.oniceconnectionstatechange = () => {
@@ -339,12 +335,9 @@ class Connection {
             console.log({isDataChannelOpen: this.isDataChannelOpen})
         })
 
-        let audioSource = undefined
-        let timeStart   = 0
         let chunksQueue = []
         let totalSize = 0
         let isPlaying = false
-        let promiseChain = Promise.resolve()
 
         const createAudioChunk = (chunkData) => {
             return new Promise((resolve, reject) => {
@@ -357,26 +350,6 @@ class Connection {
             })
         }
 
-        const playNextAudioChunk = async (chunkData) => {
-
-            return new Promise((resolve, reject) => {
-
-                PlayerSTATE.audioContext.decodeAudioData(chunkData, (buffer) => {
-                    audioSource = PlayerSTATE.audioContext.createBufferSource();
-                    audioSource.buffer = buffer
-                    audioSource.connect(PlayerSTATE.audioContext.destination)
-                    const expectedTime = PlayerSTATE.audioContext.currentTime + audioSource.buffer.duration
-                    audioSource.onended = () => {
-                        console.log('ended: ', {currentTime: PlayerSTATE.audioContext.currentTime, expectedTime}, PlayerSTATE.audioContext.currentTime - expectedTime, 'diff')
-                        console.log({timeStart, currentTime: PlayerSTATE.audioContext.currentTime, duration: audioSource.buffer.duration})
-                    }
-                    audioSource.start(timeStart)
-                    timeStart = expectedTime
-                    resolve()
-                }, reject)
-            })
-
-        }
 
         this.dataChannel.onmessage = ({ data }) => {
 

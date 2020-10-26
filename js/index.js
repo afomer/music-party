@@ -21,6 +21,39 @@ $slider.step = 1
 $slider.min = 0
 $slider.max = 100
 
+/*
+*
+* Main Function Call
+*
+*/
+
+function main() {
+
+    // A workaround to turn WebAudio on the browser, once the screen is touched/clicked
+    document.addEventListener("touchstart", addPlayerInit)
+    document.addEventListener("click", addPlayerInit)
+
+    // Update the slider bar, the time elapsed, and the time remaining
+    document.addEventListener("SEEK_TIME_UPDATE", updateTimeProgressUI)
+
+    // Visually update the slider immedietly when its value changes
+    $slider.addEventListener('input', updateSlider)
+    $volume_range.addEventListener('input', updateSlider)
+
+
+    // Once the change happens (through seeking or programmatically), update the logic
+    $slider.addEventListener('change', onSliderSeek)
+    $volume_range.addEventListener('change', onVolumeChange)
+
+    // Make the Add Song, and Play buttons functional
+    activateAddSongButton()
+    activatePlayButton()
+    activateVolumeSlider()
+    handlePartySession()
+}
+
+main()
+
 /***/
 
 function addPlayerInit() {
@@ -392,35 +425,4 @@ function handlePartySession() {
     }
 }
 
-/*
-*
-* Main Function Call
-*
-*/
 
-function main() {
-
-    // A workaround to turn WebAudio on the browser, once the screen is touched/clicked
-    document.addEventListener("touchstart", addPlayerInit)
-    document.addEventListener("click", addPlayerInit)
-
-    // Update the slider bar, the time elapsed, and the time remaining
-    document.addEventListener("SEEK_TIME_UPDATE", updateTimeProgressUI)
-
-    // Visually update the slider immedietly when its value changes
-    $slider.addEventListener('input', updateSlider)
-    $volume_range.addEventListener('input', updateSlider)
-
-
-    // Once the change happens (through seeking or programmatically), update the logic
-    $slider.addEventListener('change', onSliderSeek)
-    $volume_range.addEventListener('change', onVolumeChange)
-
-    // Make the Add Song, and Play buttons functional
-    activateAddSongButton()
-    activatePlayButton()
-    activateVolumeSlider()
-    handlePartySession()
-}
-
-main()

@@ -236,11 +236,6 @@ class PlayerFSM {
                 duration: this.duration
             })
 
-            if (this.currentSeekTime % this.SENDING_INTERVAL_IN_MSECS == 0 && this.NEXT_CHUNK_INDEX < this.audioArrayBuffer.byteLength) {
-                this.handleSendingNextChunks(this.currentSeekTime)
-            }
-
-
         }, intervalAmountInms)
     }
 
