@@ -16,10 +16,14 @@ const $audio_player = document.getElementById('audio-player')
 let remoteStream = null
 let isPlayerCreated = false
 let PlayerSTATE = undefined
-$slider.value = 0
-$slider.step = 1
-$slider.min = 0
-$slider.max = 100
+
+if ($slider) {
+    $slider.value = 0
+    $slider.step = 1
+    $slider.min = 0
+    $slider.max = 100
+}
+
 
 /*
 *
@@ -37,18 +41,23 @@ function main() {
     document.addEventListener("SEEK_TIME_UPDATE", updateTimeProgressUI)
 
     // Visually update the slider immedietly when its value changes
-    $slider.addEventListener('input', updateSlider)
-    $volume_range.addEventListener('input', updateSlider)
+    if ($slider) {
+        $slider.addEventListener('input', updateSlider)
+        // Once the change happens (through seeking or programmatically), update the logic
+        $slider.addEventListener('change', onSliderSeek)
+    }
+
+    if ($volume_range) {
+        $volume_range.addEventListener('input', updateSlider)
+        $volume_range.addEventListener('change', onVolumeChange)
+        activateVolumeSlider()
+    }
 
 
-    // Once the change happens (through seeking or programmatically), update the logic
-    $slider.addEventListener('change', onSliderSeek)
-    $volume_range.addEventListener('change', onVolumeChange)
 
     // Make the Add Song, and Play buttons functional
     activateAddSongButton()
     activatePlayButton()
-    activateVolumeSlider()
     handlePartySession()
 }
 
@@ -185,10 +194,6 @@ function songElementFn(title, artist, duration) {
                 ${duration}
             </div>
 
-        </div>
-        <div class="queue-btn-container">
-            <button class="fas fa-clone fa-md queue-btn">
-            </button>
         </div>
     </div>`)
 }

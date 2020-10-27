@@ -8,31 +8,11 @@
         <link rel="stylesheet" href="css/style.css">
         <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.12.1/css/all.css" crossorigin="anonymous">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.3/jsmediatags.js"></script>
-        <style>
-            .area {
-                display: flex;
-                flex-direction: row;
-                justify-content: center;
-                align-items: center;
-                width: 100%;
-                height: 360px;
-                background:#7f7e7e;
-            }
-		    .bar {
-                box-shadow:0px -2px 0 rgb(0,255,0);
-                background:black;
-                -webkit-transition:0.1s ease all;
-            }
-            .circularBar { position:absolute; width:10px; border-bottom-left-radius:10px; border-bottom-right-radius:10px; min-height:5px; background:black; -webkit-transition:0.1s ease all; border-bottom:3px solid rgb(0,255,0); }
-		    .curveBar { position:absolute; width:10px; height:5px; background:black; border-radius:5px; min-height:5px; border-bottom:3px solid rgb(0,255,0); border-top:3px solid rgb(255,0,0); -webkit-transition:0.1s ease all; }
-            #circularCenter { margin: auto; position: absolute; top: 0; left: 0; bottom: 0; right: 0; width:74px; height:74px; border-radius:100%; background:rgb(255,0,0); }
-            .circle {  border-radius:100%; background:rgba(0,0,0,.1);  box-shadow:0 0 2px 2px rgb(0,255,0);margin: auto; position: absolute; top: 0; left: 0; bottom: 0; right: 0; -webkit-transition:0.1s ease all;}
 
-        </style>
         <title>Music Party 🎉</title>
     </head>
     <body style="display: flex; flex-direction: column; height: 100vh; width: 100vw; margin: 0; color: #fff;">
-        <div style="display: flex; flex-direction: column; height: 100%; width: 100%;  overflow: hidden;">
+        <div style="display: flex;flex-direction: column; width: 100%;overflow: hidden;background-color: var(--primary-bg-color);">
             <div class="listeners" style="color: #fff; background-color: var(--primary-bg-color);font-family: Gill Sans, Seravek, Trebuchet MS, sans-serif;padding: 5px 20px;">
                 <div id="party-title" style="font-family: inherit; font-size: 2em; margin-bottom: 10px; padding-left: 1px;">
                     Music Party
@@ -40,43 +20,32 @@
 
                 <div>
                     <form id="room-input-form" style="display: flex; flex-direction: column;">
-                        <input id="room-input" type="tel" placeholder="Enter Room Number" />
+                        <input id="room-input" type="tel" placeholder="Enter Room Number">
                         <button class="button-style" id="room-join" type="submit">
                             Join The Party 🎉
                         </button>
                     </form>
                 </div>
 
-                <hr style="width: 100%; border-top: 1px solid #2f2f2f; margin: 25px 0;">
+                <hr style="width: 100%; border-top: 1px solid #2f2f2f; margin: 50px 0;">
 
             </div>
-            <span style="color: #000;">Circular Alignment</span>
-                <div class="initiator"></div>
-                <div id="circular" class="area">
-                    <div class="circularBar" style="width: 50px; height: 120px;"></div>
-                    <div class="circularBar" style="width: 50px; height: 100px;"></div>
-                </div>
-            </div>
-
         </div>
 
-        <footer class="player">
+        <div class="player">
 
-            <div style="margin: auto; width: 100%; display: flex; align-items: center;">
-                <div style="height: 60px; width: 60px; margin: 0 10px">
-                    <img id="song-img"
-                        style="border-radius: 50%; height: 100%; width: 100%;"
-                        src="https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg"
-                    />
+            <div style="margin: auto;width: 100%;flex-direction: column;display: flex;align-items: center;">
+                <div style="height: 100px; width: 100px; margin: 0 10px">
+                    <img id="song-img" style="border-radius: 50%; height: 100%; width: 100%;" src="https://upload.wikimedia.org/wikipedia/en/e/e6/AllAmerikkkanBadass.jpg">
                 </div>
                 <div style="width: 80%; display: flex; flex-direction: column; align-items: flex-start;">
-                    <div style="overflow: hidden; width: 100%;">
-                        <p id="song-title" style="font-size: 1.2em; color: #fff; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
+                    <div style="margin: auto;overflow: hidden;">
+                        <p id="song-title" style="font-size: 2em;color: #fff;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;">
                             Land of the Free
                         </p>
                     </div>
-                    <div style="overflow: hidden; width: 100%;">
-                        <p  id="song-artist" style="font-size: .9em; color: #dedede; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
+                    <div style="overflow: hidden;margin: auto;">
+                        <p id="song-artist" style="font-size: 1.2em; color: #dedede; white-space: nowrap; overflow: hidden;text-overflow: ellipsis;">
                             Joey Bada$$
                         </p>
                     </div>
@@ -84,26 +53,13 @@
 
             </div>
 
-            <div style="width: 70%; height: 100%; display: flex; flex-direction: column;">
-
-                <div style="display: flex; align-items: center; padding-top: 15px; color: #fff; ">
-                    <audio autoplay preload="none" id="audio-player"></audio>
-                    <time style="width: 50px" class="time_elapsed" datetime="PT2M30S">0:00</time>
-                    <input id="slider" type="range" min="0" max="100" value="0" step="1">
-                    <time style="width: 50px" class="time_remaining" datetime="PT2M30S">-2:30</time>
-                </div>
-
-            </div>
-
-            <div style="padding-top: 2em;display: flex; align-items: center; padding-top: 15px; color: #fff; ">
-                <input id="volume-range" type="range" min="0.0" max="1.0" step="0.01" value="0.5"/>
-            </div>
-
-        </footer>
+        </div>
         <script src="https://cdn.jsdelivr.net/npm/socket.io-client@2/dist/socket.io.js"></script>
         <script src="js/Sending.js"></script>
         <script src="js/Player.js"></script>
         <script src="js/connection.js"></script>
         <script src="js/index.js"></script>
-    </body>
+
+    
+<div id="pocket-extension-root"><div class="pocket-egasyq"></div></div><div id="pocket-extension-styles"><style data-emotion="pocket"></style></div></body>
 </html>

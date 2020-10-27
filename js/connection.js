@@ -13,7 +13,6 @@ The difference is that hosts store a "listeners array"
 /* Global Variables */
 const SERVER_ADDRESS = "http://192.168.1.11:3000"
 
-
 /* STATES */
 // There are two main states maintained, listener and host
 // at every point in time you are either one of them
@@ -250,46 +249,13 @@ class Connection {
         analyser.connect(PlayerSTATE.audioContext.destination)
 
         let frequencyData = new Uint8Array(analyser.frequencyBinCount)
-        let circles = [];
-        let height = 360;
-        let width = 360;
 
-        let init = function(config) {
-            let count = config.count;
-
-            const center = width/2;
-            const circleMaxWidth = (width*0.5) >> 0;
-            const radius = circleMaxWidth*0.2;
-            const twopi = 2 * Math.PI;
-            const change = twopi/count;
-            let circlesEl = document.getElementById('circular');
-            for(var i = 0; i < twopi; i+=change ){
-                var node = document.createElement('div');
-                node.style.left = (center + radius*Math.cos(i)) + 'px';
-                node.style.top = (center + radius*Math.sin(i)) + 'px';
-                node.style.webkitTransform = node.style.mozTransform = node.style.transform = 'rotate(' + (i-(Math.PI/2)) + 'rad)';
-
-                node.style.webkitTransformOrigin = node.style.mozTransformOrigin = node.style.transformOrigin = '0px 0px';
-                node.classList.add('circularBar');
-                circles.push(node);
-                circlesEl.appendChild(node);
-            }
-            const centerEl = document.createElement('div');
-            centerEl.id = 'circularCenter';
-            circlesEl.appendChild(centerEl);
-        };
-
-        init({
-            width: width,
-            height: height,
-            count: analyser.frequencyBinCount
-        })
 
         function renderFrame() {
             analyser.getByteFrequencyData(frequencyData)
             let max = 256;
-            for(let i = 0; i < circles.length; i++) {
-                let bar = circles[i];
+            for(let i = 0; i < bars.length; i++) {
+                let bar = bars[i];
                 bar.style.height = ((frequencyData[i]/max)*150)+'px';
             }
             requestAnimationFrame(renderFrame)
@@ -325,7 +291,7 @@ class Connection {
             this.makingOffer = false
         }
 
-        this.dataChannel = this.remotePeerConnection.createDataChannel("datach", { protocol: "tcp" })
+        this.dataChannel = this.remotePeerConnection.createDataChannel("metadata", { protocol: "tcp" })
         this.dataChannel.addEventListener("open", event => {
             this.isDataChannelOpen = true
             console.log({ isDataChannelOpen : this.isDataChannelOpen})
@@ -352,8 +318,11 @@ class Connection {
 
 
         this.dataChannel.onmessage = ({ data }) => {
-
-            if (data instanceof ArrayBuffer) {
+            if (data instanceof String) {
+                // TODO add metadata to listener
+                JSON.parse(data)
+            }
+            elif (data instanceof ArrayBuffer) {
                     const chunk = readArrayBufferChunk(data)
                     totalSize += chunk.data.byteLength
                     chunksQueue.push(createAudioChunk(chunk.data))
