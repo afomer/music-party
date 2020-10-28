@@ -117,6 +117,10 @@ class PlayerFSM {
         return this.playlist.length - 1
     }
 
+    getCurrentSongInfo() {
+        return this.currentSong?.getInfo()
+    }
+
     // Possible transitions based on state
     // Based on Finite State Automata of STATES and TRANSITIONS
     async transitionState(transition, ...args) {
@@ -205,8 +209,6 @@ class PlayerFSM {
 
     handleSendingNextChunks(currentSeekTime) {
 
-        return;
-
         this.dispatchEventForListeners(this.EVENT_TYPES.NEXT_CHUNKS, {
             currentSeekTime: this.currentSeekTime,
             chunks: [this.audioArrayBuffer.slice(this.NEXT_CHUNK_INDEX, this.NEXT_CHUNK_INDEX + this.SEGMENT_SIZE)]
@@ -220,7 +222,6 @@ class PlayerFSM {
     setIntervalTimer() {
         const intervalAmountInms = 200
         // Sending intial seconds
-        this.handleSendingNextChunks(this.currentSeekTime)
         this.currentSeekTimeInterval = setInterval(async () => {
             const newTime = this.currentSeekTime + intervalAmountInms
             if (newTime <= this.duration) {

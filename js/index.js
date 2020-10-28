@@ -97,6 +97,14 @@ function addPlayerInit() {
         console.log("HTMLAudio unlocked!");
     };
     var p = tag.play();
+
+    document.addEventListener(PlayerSTATE.EVENT_TYPES.PLAY, (e) => {
+        console.log(Party.dataChannel, PlayerSTATE.getCurrentSongInfo())
+        if (Party.dataChannel) {
+            Party.dataChannel.send(JSON.stringify(PlayerSTATE.getCurrentSongInfo()))
+        }
+    })
+
 }
 
 function updateTimeProgressUI(event) {
@@ -223,6 +231,7 @@ async function handleAudioFile(file) {
     songCard.getElementsByTagName('img')[0].src = img
 
     songCard.onclick = () => {
+        document.getElementById('song-img').style.visibility = 'visible'
         document.getElementById('song-img').src = img
         document.getElementById('song-title').textContent  = title
         document.getElementById('song-artist').textContent = artistFormatted
@@ -386,6 +395,8 @@ function handlePartySession() {
         console.log({NEW_STATE: e.detail.STATE})
         onPartyStateChange()
     })
+
+
 
     // TODO: Add animation for the listener based on the waves amplitude of the audio
     document.getElementById("room-input-form").onsubmit = (e) => {

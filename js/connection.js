@@ -125,6 +125,8 @@ class Connection {
         switch(this.CURRENT_STATE) {
             case this.STATES.LISTENER:
                 this.transitionToState(this.STATES.IDLE)
+                document.getElementById("song-title").textContent = ""
+                document.getElementById("song-artist").textContent = ""
                 alert("Host is disconnected or unavailable")
                 break;
 
@@ -250,14 +252,13 @@ class Connection {
 
         let frequencyData = new Uint8Array(analyser.frequencyBinCount)
 
-
         function renderFrame() {
             analyser.getByteFrequencyData(frequencyData)
             let max = 256;
-            for(let i = 0; i < bars.length; i++) {
-                let bar = bars[i];
-                bar.style.height = ((frequencyData[i]/max)*150)+'px';
-            }
+            const maxVal = frequencyData.reduce((x,y) => Math.max(x, y))
+
+            document.getElementById("animated-circle").style.height = `${maxVal}px`
+            document.getElementById("animated-circle").style.width = `${maxVal}px`
             requestAnimationFrame(renderFrame)
         }
 
@@ -301,67 +302,18 @@ class Connection {
             console.log({isDataChannelOpen: this.isDataChannelOpen})
         })
 
-        let chunksQueue = []
-        let totalSize = 0
-        let isPlaying = false
-
-        const createAudioChunk = (chunkData) => {
-            return new Promise((resolve, reject) => {
-                PlayerSTATE.audioContext.decodeAudioData(chunkData, (buffer) => {
-                    const audioSource = PlayerSTATE.audioContext.createBufferSource();
-                    audioSource.buffer = buffer
-                    audioSource.connect(PlayerSTATE.audioContext.destination)
-                    resolve({size: chunkData.byteLength, audioSource})
-                }, reject)
-            })
-        }
-
-
         this.dataChannel.onmessage = ({ data }) => {
-            if (data instanceof String) {
-                // TODO add metadata to listener
-                JSON.parse(data)
+            // Assume strings are metadata with the attributes:
+            // song-title
+            // song-artist
+            // song-img
+            if (typeof data == "string") {
+                const metadata = JSON.parse(data)
+                document.getElementById("song-title").textContent = metadata["title"]
+                document.getElementById("song-artist").textContent = metadata["artist"]
+                document.getElementById("song-img").setAttribute("src", metadata["img"])
             }
-            elif (data instanceof ArrayBuffer) {
-                    const chunk = readArrayBufferChunk(data)
-                    totalSize += chunk.data.byteLength
-                    chunksQueue.push(createAudioChunk(chunk.data))
 
-                    if (totalSize >= 14000 * 2 && !isPlaying) {
-
-                        isPlaying = true
-                        console.log({audioChunksLen: chunksQueue.length, totalSize})
-                        const chunksQueuePromises = chunksQueue
-                        chunksQueue = []
-                        totalSize   = 0
-                        Promise.all(chunksQueuePromises)
-                        .then((audioChunks) => {
-                            let offset = 0
-
-
-                            while (audioChunks.length > 0) {
-                                let {size, audioSource} = audioChunks.shift()
-                                const queuedChunk = audioSource
-
-                                if (audioChunks.length == 0) {
-                                    queuedChunk.onended = () => {
-                                        isPlaying = false
-                                    }
-                                }
-
-                                const duration = queuedChunk.buffer.duration
-                                queuedChunk.start(PlayerSTATE.audioContext.currentTime + offset)
-                                offset += duration
-
-                                console.log({cumulativeDuration: offset, duration})
-
-                            }
-                            console.log({totalDuration: offset})
-                        })
-
-                    }
-
-                }
         }
 
         this.makingOffer = true
