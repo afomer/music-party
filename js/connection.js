@@ -118,7 +118,7 @@ class Connection {
     }
 
     removeListener(id) {
-        this.listeners?.[id]?.pc?.close()
+        this.listeners && this.listeners[id] && this.listeners[id].pc && this.listeners[id].pc.close()
     }
 
     handleLeave(id=undefined) {

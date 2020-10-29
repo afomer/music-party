@@ -118,7 +118,7 @@ class PlayerFSM {
     }
 
     getCurrentSongInfo() {
-        return this.currentSong?.getInfo()
+        return this.currentSong && this.currentSong.getInfo()
     }
 
     // Possible transitions based on state

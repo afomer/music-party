@@ -249,14 +249,6 @@ async function handleAudioFile(file) {
 
 function activateAddSongButton() {
     const inputFileElement = document.createElement('input')
-    if (document.getElementById('add-song')) {
-        document.getElementById('add-song').onclick = () => {
-            inputFileElement.setAttribute('multiple', '')
-            inputFileElement.setAttribute('type', 'file')
-            inputFileElement.click()
-        }
-    }
-
     inputFileElement.oninput = (e) => {
         // Add all selected files to the array list
         for (const file of e.target.files) {
@@ -267,6 +259,16 @@ function activateAddSongButton() {
             }
         }
     }
+
+    if (document.getElementById('add-song')) {
+        document.getElementById('add-song').onclick = () => {
+            inputFileElement.setAttribute('multiple', '')
+            inputFileElement.setAttribute('type', 'file')
+            inputFileElement.click()
+        }
+    }
+
+
 }
 
 /** Style for Pause and Play Buttons */
@@ -357,7 +359,36 @@ function onVolumeChange(e) {
     }
 }
 
+function addQRCodeElement(code) {
+    const qrCodeDiv = document.createElement("div")
+    qrCodeDiv.id = "QRCode"
+    qrCodeDiv.style.display = "flex"
+    qrCodeDiv.style.justifyContent = "center"
+    qrCodeDiv.style.alignItems = "center"
+    qrCodeDiv.style.backgroundColor = "#fff"
+    qrCodeDiv.style.borderRadius = "10px"
+    qrCodeDiv.style.padding = "30px"
+    qrCodeDiv.style.margin = "20px 0"
+    document.getElementById("room-create").before(qrCodeDiv)
+
+    const qrcode = new QRCode(qrCodeDiv, {
+        text: code,
+        height: 150,
+        width: 150
+    });
+    console.log(qrcode)
+}
+
+function removeQRCodeElement() {
+    const qrCodeElement = document.getElementById("QRCode")
+
+    if (qrCodeElement) {
+        qrCodeElement.remove()
+    }
+}
+
 function onPartyStateChange() {
+
 
     // For Host
     if ($room_create) {
@@ -366,11 +397,13 @@ function onPartyStateChange() {
             $room_create.textContent = CONNECTED_HOST_TEXT
             $room.style.visibility = 'hidden'
             document.getElementById('room-input-form').style.visibility = 'hidden'
+            addQRCodeElement(String(Party.ID))
         } else if ($room_create &&  Party.CURRENT_STATE == Party.STATES.IDLE) {
             $room_create.className = 'button-style'
             $room_create.textContent = UNCONNECTED_HOST_TEXT
             $room.style.visibility = 'visible'
             document.getElementById('room-input-form').style.visibility = 'visible'
+            removeQRCodeElement()
         }
     } else {
         // For Listeners
@@ -387,7 +420,9 @@ function onPartyStateChange() {
 
 }
 
-
+const handleRoomJoin = (partyID) => {
+    Party.join(partyID)
+}
 
 function handlePartySession() {
 
@@ -396,15 +431,12 @@ function handlePartySession() {
         onPartyStateChange()
     })
 
-
-
     // TODO: Add animation for the listener based on the waves amplitude of the audio
     document.getElementById("room-input-form").onsubmit = (e) => {
+        const partyID = document.getElementById('room-input').value
         if (Party.CURRENT_STATE == Party.STATES.IDLE) {
-            const partyID = document.getElementById('room-input').value
             document.getElementById('room-input').value = ''
-            Party.join(partyID)
-
+            handleRoomJoin(partyID)
         } else {
             Party.leave()
         }
@@ -441,4 +473,93 @@ function handlePartySession() {
     }
 }
 
+function getImageDimensions(file) {
+    return new Promise((resolve,_) => {
+        const reader = new FileReader;
+
+        console.log("getting dimesnsions")
+        reader.onload = function() {
+            const image = new Image();
+            console.log("the image", image)
+            image.src = reader.result;
+            image.onload = function() {
+                console.log("resolve data")
+                resolve({width: image.width, height: image.height });
+            };
+
+        };
+
+        reader.readAsDataURL(file);
+    })
+}
+
+async function handleQRImage(imageFile) {
+
+    const { width, height } = await getImageDimensions(imageFile)
+
+    return new Promise((resolve) => {
+
+        const canvas = document.createElement("canvas")
+        canvas.setAttribute("width", width)
+        canvas.setAttribute("height", height)
+
+        baseImage     = new Image()
+        console.log("getting baseImage")
+        baseImage.onload = function(e) {
+            canvas.getContext("2d").drawImage(baseImage, 0, 0)
+            console.log("drew in canvas")
+            canvas.toBlob((blob) => {
+                console.log("got the blob")
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    const imageData = new Uint8ClampedArray(reader.result)
+                    const PNGDecoded = UPNG.decode(imageData)
+                    console.log("decode png")
+                    const imageToRGBA = new Uint8ClampedArray(UPNG.toRGBA8(PNGDecoded)[0])
+                    console.log("to rgba")
+
+                    console.log(reader.result)
+                    resolve({ image: imageToRGBA, width: PNGDecoded.width, height: PNGDecoded.height})
+                }
+                reader.readAsArrayBuffer(blob)
+
+            }, "image/png")
+        }
+
+        baseImage.src = URL.createObjectURL(imageFile)
+
+    })
+
+}
+
+if (document.getElementById("room-join-QR")) {
+    const imageCaptureElement = document.createElement("input")
+    document.getElementById("room-join-QR").onclick = (e) => {
+        imageCaptureElement.setAttribute("type", "file")
+        imageCaptureElement.setAttribute("capture", true)
+        imageCaptureElement.addEventListener("change", (e) => {
+
+            console.log("OnInput")
+
+            handleQRImage(e.target.files[0])
+            .then(({ image, width, height }) => {
+                const QRCode = jsQR(image, width, height);
+                console.log(QRCode)
+                alert(Number(QRCode.data))
+                handleRoomJoin(Number(QRCode.data))
+            })
+            .catch((err) => {
+                console.error(err)
+                alert(err)
+            })
+
+        })
+        imageCaptureElement.click()
+        document.body.appendChild(imageCaptureElement)
+        document.body.removeChild(imageCaptureElement)
+
+        e.preventDefault()
+    }
+
+}
 
