@@ -8,11 +8,11 @@ Cross-Platform Music Parties in the Browser 🎧
 </h1>
 
 <p align="center">
-Cross-Platform Music Parties in the Browser using <strong>WebRTC</strong>, and <strong>Web Audio API</strong>!
+Cross-Platform Realtime Audio Sharing through the Browser using <strong>WebRTC</strong>, and <strong>Web Audio API</strong>!
 </p>
 <br/>
 <br/>
-<img src="images/mpjs_flow.png" alt="Host Listeners Overview Picture">
+<img src="images/mpjs_flow_detailed.png" alt="Host Listeners Overview Picture">
 <br/>
 <br/>
 <h1>
