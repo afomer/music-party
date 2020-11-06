@@ -39,7 +39,7 @@ Host
 <p>
 
 ```
-Open index.html with your favorite browser
+Open index.html in your favorite browser
 ```
 </p>
 <h4>
@@ -48,7 +48,7 @@ Listener
 <p>
 
 ```
-Open listener.html with your favorite browser
+Open listener.html in your favorite browser
 ```
 </p>
 
